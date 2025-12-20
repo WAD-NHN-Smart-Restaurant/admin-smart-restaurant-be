@@ -210,7 +210,8 @@ export class TablesController {
   @ApiParam({ name: 'id', description: 'Table UUID' })
   @ApiResponse({ status: 200, description: 'QR code generated successfully' })
   async generateQrCode(@Param('id') id: string) {
-    const result = await this.tablesService.regenerateQRCode(id);
+    const expiresIn = process.env.QR_TOKEN_EXPIRES_IN;
+    const result = await this.tablesService.regenerateQRCode(id, expiresIn ? { expiresIn } : undefined);
     return { success: true, message: 'QR code generated', data: result };
   }
 
