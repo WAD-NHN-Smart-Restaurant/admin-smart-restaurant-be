@@ -10,7 +10,12 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Res,
+  StreamableFile,
+  Response,
 } from '@nestjs/common';
+import type { Response as ExpressResponse } from 'express';
+import { ApiConsumes } from '@nestjs/swagger';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
@@ -198,5 +203,56 @@ export class TablesController {
       message: `Table ${updateStatusDto.status === 'available' ? 'activated' : updateStatusDto.status === 'inactive' ? 'deactivated' : 'status updated'} successfully`,
       data: table,
     };
+  }
+
+  @Post(':id/qr/generate')
+  @ApiOperation({ summary: 'Generate or regenerate QR code for a table' })
+  @ApiParam({ name: 'id', description: 'Table UUID' })
+  @ApiResponse({ status: 200, description: 'QR code generated successfully' })
+  async generateQrCode(@Param('id') id: string) {
+    const result = await this.tablesService.regenerateQRCode(id);
+    return { success: true, message: 'QR code generated', data: result };
+  }
+
+  @Get(':id/qr/download')
+  @ApiOperation({ summary: 'Download QR code for a table (PNG/PDF)' })
+  @ApiParam({ name: 'id', description: 'Table UUID' })
+  @ApiQuery({ name: 'format', required: false, enum: ['png', 'pdf'], description: 'Download format' })
+  @ApiQuery({ name: 'includeLogo', required: false, type: Boolean })
+  @ApiQuery({ name: 'includeWifi', required: false, type: Boolean })
+  @ApiResponse({ status: 200, description: 'QR code file' })
+  async downloadQrCode(
+    @Param('id') id: string,
+    @Res() res: ExpressResponse,
+    @Query('format') format: 'png' | 'pdf' = 'png',
+    @Query('includeLogo') includeLogo?: boolean,
+    @Query('includeWifi') includeWifi?: boolean,
+  ) {
+    const file = await this.tablesService.getQrCodeFile(id, format, { includeLogo, includeWifi });
+    res.setHeader('Content-Type', file.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.end(file.buffer);
+  }
+
+  @Get('qr/download-all')
+  @ApiOperation({ summary: 'Download all QR codes as ZIP or PDF' })
+  @ApiQuery({ name: 'format', required: false, enum: ['png', 'pdf'], description: 'Download format' })
+  @ApiResponse({ status: 200, description: 'ZIP or PDF file' })
+  async downloadAllQrCodes(
+    @Res() res: ExpressResponse,
+    @Query('format') format: 'png' | 'pdf' = 'png',
+  ) {
+    const archive = await this.tablesService.getAllQrCodesArchive(format);
+    res.setHeader('Content-Type', archive.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${archive.filename}"`);
+    archive.stream.pipe(res);
+  }
+
+  @Post('qr/regenerate-all')
+  @ApiOperation({ summary: 'Bulk regenerate all QR codes' })
+  @ApiResponse({ status: 200, description: 'All QR codes regenerated' })
+  async bulkRegenerateQrCodes() {
+    const result = await this.tablesService.bulkRegenerateQRCodes();
+    return { success: true, message: 'Bulk QR code regeneration complete', data: result };
   }
 }
