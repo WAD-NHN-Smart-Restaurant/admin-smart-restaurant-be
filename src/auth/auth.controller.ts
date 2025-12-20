@@ -31,7 +31,7 @@ import type {
 } from './auth.service';
 import { SupabaseJwtAuthGuard } from './guards/supabase-jwt-auth.guard';
 
-@ApiTags('auth')
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -69,17 +69,15 @@ export class AuthController {
     // Set tokens in HttpOnly secure cookies if session exists
     if (result.tokens) {
       res.cookie('access_token', result.tokens.accessToken, {
-        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 60 * 60 * 1000, // 1 hour
         path: '/',
       });
 
       res.cookie('refresh_token', result.tokens.refreshToken, {
-        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: '/',
       });
@@ -119,17 +117,15 @@ export class AuthController {
     // Set tokens in HttpOnly secure cookies
     if (result.tokens) {
       res.cookie('access_token', result.tokens.accessToken, {
-        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 60 * 60 * 1000, // 1 hour
         path: '/',
       });
 
       res.cookie('refresh_token', result.tokens.refreshToken, {
-        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: '/',
       });
@@ -239,7 +235,7 @@ export class AuthController {
       res.cookie('access_token', result.tokens.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 60 * 60 * 1000, // 1 hour
         path: '/',
       });
@@ -247,7 +243,7 @@ export class AuthController {
       res.cookie('refresh_token', result.tokens.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: '/',
       });

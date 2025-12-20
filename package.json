@@ -22,7 +22,7 @@
     "prepare": "husky",
     "gen:types": "supabase gen types typescript --project-id yhmvzieedncvvpzomlnf > src/supabase/supabase.types.ts",
     "migrate:up": "supabase migration up --db-url postgresql://postgres.yhmvzieedncvvpzomlnf:WADfinalprjDB2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres",
-    "create:migration": "supabase migration new [function-name]"
+    "create:migration": "supabase migration new"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

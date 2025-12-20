@@ -22,10 +22,15 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-Requested-With',
+    ],
     credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
+    // preflightContinue: false,
+    // optionsSuccessStatus: 204,
   });
 
   app.setGlobalPrefix('api', {
@@ -37,8 +42,8 @@ async function bootstrap() {
     .setTitle('Smart Restaurant API')
     .setDescription('API documentation for Smart Restaurant Management System')
     .setVersion('1.0')
-    .addTag('auth', 'Authentication endpoints')
-    .addTag('tables', 'Table management endpoints')
+    .addTag('Auth', 'Authentication endpoints')
+    .addTag('Tables', 'Table management endpoints')
     .addBearerAuth(
       {
         type: 'http',

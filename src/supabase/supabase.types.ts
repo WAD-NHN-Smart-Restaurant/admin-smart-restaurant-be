@@ -144,7 +144,7 @@ export type Database = {
           price_at_time: number;
           product_id: number | null;
           quantity: number;
-          status: string | null;
+          status: Database['public']['Enums']['order_item_status'] | null;
         };
         Insert: {
           created_at?: string | null;
@@ -154,7 +154,7 @@ export type Database = {
           price_at_time: number;
           product_id?: number | null;
           quantity?: number;
-          status?: string | null;
+          status?: Database['public']['Enums']['order_item_status'] | null;
         };
         Update: {
           created_at?: string | null;
@@ -164,7 +164,7 @@ export type Database = {
           price_at_time?: number;
           product_id?: number | null;
           quantity?: number;
-          status?: string | null;
+          status?: Database['public']['Enums']['order_item_status'] | null;
         };
         Relationships: [
           {
@@ -188,7 +188,7 @@ export type Database = {
           created_at: string | null;
           customer_id: string | null;
           id: number;
-          status: string | null;
+          status: Database['public']['Enums']['order_status'] | null;
           table_id: string | null;
           total_amount: number | null;
           updated_at: string | null;
@@ -197,7 +197,7 @@ export type Database = {
           created_at?: string | null;
           customer_id?: string | null;
           id?: number;
-          status?: string | null;
+          status?: Database['public']['Enums']['order_status'] | null;
           table_id?: string | null;
           total_amount?: number | null;
           updated_at?: string | null;
@@ -206,7 +206,7 @@ export type Database = {
           created_at?: string | null;
           customer_id?: string | null;
           id?: number;
-          status?: string | null;
+          status?: Database['public']['Enums']['order_status'] | null;
           table_id?: string | null;
           total_amount?: number | null;
           updated_at?: string | null;
@@ -233,27 +233,27 @@ export type Database = {
           amount: number;
           created_at: string | null;
           id: number;
-          method: string | null;
+          method: Database['public']['Enums']['payment_method'] | null;
           order_id: number | null;
-          status: string | null;
+          status: Database['public']['Enums']['payment_status'] | null;
           transaction_id: string | null;
         };
         Insert: {
           amount: number;
           created_at?: string | null;
           id?: number;
-          method?: string | null;
+          method?: Database['public']['Enums']['payment_method'] | null;
           order_id?: number | null;
-          status?: string | null;
+          status?: Database['public']['Enums']['payment_status'] | null;
           transaction_id?: string | null;
         };
         Update: {
           amount?: number;
           created_at?: string | null;
           id?: number;
-          method?: string | null;
+          method?: Database['public']['Enums']['payment_method'] | null;
           order_id?: number | null;
-          status?: string | null;
+          status?: Database['public']['Enums']['payment_status'] | null;
           transaction_id?: string | null;
         };
         Relationships: [
@@ -343,7 +343,7 @@ export type Database = {
           location: string | null;
           qr_token: string | null;
           qr_token_created_at: string | null;
-          status: string | null;
+          status: Database['public']['Enums']['table_status'] | null;
           table_number: string;
           updated_at: string;
         };
@@ -355,7 +355,7 @@ export type Database = {
           location?: string | null;
           qr_token?: string | null;
           qr_token_created_at?: string | null;
-          status?: string | null;
+          status?: Database['public']['Enums']['table_status'] | null;
           table_number: string;
           updated_at?: string;
         };
@@ -367,7 +367,7 @@ export type Database = {
           location?: string | null;
           qr_token?: string | null;
           qr_token_created_at?: string | null;
-          status?: string | null;
+          status?: Database['public']['Enums']['table_status'] | null;
           table_number?: string;
           updated_at?: string;
         };
@@ -381,6 +381,17 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
+      order_item_status:
+        | 'pending'
+        | 'accepted'
+        | 'rejected'
+        | 'preparing'
+        | 'ready'
+        | 'served';
+      order_status: 'active' | 'payment_pending' | 'completed' | 'cancelled';
+      payment_method: 'cash' | 'zalopay' | 'momo' | 'vnpay' | 'stripe';
+      payment_status: 'pending' | 'success' | 'failed';
+      table_status: 'available' | 'occupied' | 'inactive';
       user_role:
         | 'super_admin'
         | 'admin'
@@ -518,6 +529,18 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      order_item_status: [
+        'pending',
+        'accepted',
+        'rejected',
+        'preparing',
+        'ready',
+        'served',
+      ],
+      order_status: ['active', 'payment_pending', 'completed', 'cancelled'],
+      payment_method: ['cash', 'zalopay', 'momo', 'vnpay', 'stripe'],
+      payment_status: ['pending', 'success', 'failed'],
+      table_status: ['available', 'occupied', 'inactive'],
       user_role: [
         'super_admin',
         'admin',
