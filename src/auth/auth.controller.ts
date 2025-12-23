@@ -65,19 +65,20 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.signUp(dto);
+    const isProduction = process.env.NODE_ENV === 'production';
 
     // Set tokens in HttpOnly secure cookies if session exists
     if (result.tokens) {
       res.cookie('access_token', result.tokens.accessToken, {
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 60 * 60 * 1000, // 1 hour
         path: '/',
       });
 
       res.cookie('refresh_token', result.tokens.refreshToken, {
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: '/',
       });

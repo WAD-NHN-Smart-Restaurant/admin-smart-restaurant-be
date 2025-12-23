@@ -11,11 +11,8 @@ import {
   HttpCode,
   HttpStatus,
   Res,
-  StreamableFile,
-  Response,
 } from '@nestjs/common';
 import type { Response as ExpressResponse } from 'express';
-import { ApiConsumes } from '@nestjs/swagger';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
@@ -95,10 +92,12 @@ export class TablesController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async findAll(@Query() query: QueryTablesDto) {
     const tables = await this.tablesService.findAll(query);
+    const tablesWithoutTokens = tables.map(({ qr_token, ...rest }) => rest);
+
     return {
       success: true,
       message: 'Tables retrieved successfully',
-      data: tables,
+      data: tablesWithoutTokens,
     };
   }
 
@@ -211,14 +210,22 @@ export class TablesController {
   @ApiResponse({ status: 200, description: 'QR code generated successfully' })
   async generateQrCode(@Param('id') id: string) {
     const expiresIn = process.env.QR_TOKEN_EXPIRES_IN;
-    const result = await this.tablesService.regenerateQRCode(id, expiresIn ? { expiresIn } : undefined);
+    const result = await this.tablesService.regenerateQRCode(
+      id,
+      expiresIn ? { expiresIn } : undefined,
+    );
     return { success: true, message: 'QR code generated', data: result };
   }
 
   @Get(':id/qr/download')
   @ApiOperation({ summary: 'Download QR code for a table (PNG/PDF)' })
   @ApiParam({ name: 'id', description: 'Table UUID' })
-  @ApiQuery({ name: 'format', required: false, enum: ['png', 'pdf'], description: 'Download format' })
+  @ApiQuery({
+    name: 'format',
+    required: false,
+    enum: ['png', 'pdf'],
+    description: 'Download format',
+  })
   @ApiQuery({ name: 'includeLogo', required: false, type: Boolean })
   @ApiQuery({ name: 'includeWifi', required: false, type: Boolean })
   @ApiResponse({ status: 200, description: 'QR code file' })
@@ -226,18 +233,24 @@ export class TablesController {
     @Param('id') id: string,
     @Res() res: ExpressResponse,
     @Query('format') format: 'png' | 'pdf' = 'png',
-    @Query('includeLogo') includeLogo?: boolean,
-    @Query('includeWifi') includeWifi?: boolean,
   ) {
-    const file = await this.tablesService.getQrCodeFile(id, format, { includeLogo, includeWifi });
+    const file = await this.tablesService.getQrCodeFile(id, format);
     res.setHeader('Content-Type', file.contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
     res.end(file.buffer);
   }
 
   @Get('qr/download-all')
   @ApiOperation({ summary: 'Download all QR codes as ZIP or PDF' })
-  @ApiQuery({ name: 'format', required: false, enum: ['png', 'pdf'], description: 'Download format' })
+  @ApiQuery({
+    name: 'format',
+    required: false,
+    enum: ['png', 'pdf'],
+    description: 'Download format',
+  })
   @ApiResponse({ status: 200, description: 'ZIP or PDF file' })
   async downloadAllQrCodes(
     @Res() res: ExpressResponse,
@@ -245,7 +258,10 @@ export class TablesController {
   ) {
     const archive = await this.tablesService.getAllQrCodesArchive(format);
     res.setHeader('Content-Type', archive.contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${archive.filename}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${archive.filename}"`,
+    );
     archive.stream.pipe(res);
   }
 
@@ -254,6 +270,10 @@ export class TablesController {
   @ApiResponse({ status: 200, description: 'All QR codes regenerated' })
   async bulkRegenerateQrCodes() {
     const result = await this.tablesService.bulkRegenerateQRCodes();
-    return { success: true, message: 'Bulk QR code regeneration complete', data: result };
+    return {
+      success: true,
+      message: 'Bulk QR code regeneration complete',
+      data: result,
+    };
   }
 }
