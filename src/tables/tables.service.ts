@@ -64,17 +64,9 @@ export class TablesService {
 
       const result = await Promise.all(
         tables.map(async (table) => {
-          let qrUrl: string | null = null;
-          if (table.qr_token) {
-            const qrEmbededUrl = `${process.env.FRONTEND_URL}/menu?table=${table.id}&token=${table.qr_token}`;
-            qrUrl = await QRCode.toDataURL(qrEmbededUrl, {
-              width: 200,
-              margin: 4,
-            });
-          }
           return {
             ...table,
-            qrUrl,
+            qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.FRONTEND_URL}/menu?table=${table.id}&token=${table.qr_token}`)}&size=200x200`,
           };
         }),
       );
@@ -386,12 +378,19 @@ export class TablesService {
    * Verify a QR JWT token and return decoded payload or throw
    */
   verifyQrToken(token: string) {
-    const secret = process.env.QR_JWT_SECRET || 'change_this_secret';
+    const secret = process.env.QR_JWT_SECRET;
     try {
-      const decoded = jwt.verify(token, secret);
-      return decoded as any;
+      if (secret) {
+        const decoded = jwt.verify(token, secret);
+        return decoded as any;
+      } else {
+        console.error('QR JWT secret not configured');
+      }
     } catch (err) {
-      throw new BadRequestException('Invalid or expired QR token');
+      console.log('QR token verification failed:', err);
+      throw new BadRequestException(
+        'This QR code is no longer valid. Please ask staff for assistance.',
+      );
     }
   }
 
