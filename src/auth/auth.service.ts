@@ -13,6 +13,7 @@ export interface SignUpDto {
   password: string;
   name: string;
   role?: string;
+  restaurantId?: string;
 }
 
 export interface SignInDto {
@@ -104,6 +105,7 @@ export class AuthService {
             email: result.user?.email,
             name: result.user?.user_metadata?.name,
             role: result.user?.user_metadata?.role || 'customer',
+            restaurantId: result.user?.user_metadata?.restaurant_id,
             emailConfirmed: !emailConfirmationRequired,
           },
           accessToken: result.session?.access_token || null,

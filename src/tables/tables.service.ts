@@ -24,7 +24,10 @@ const qrCodeGenerater = 'https://api.qrserver.com/v1/create-qr-code/';
 export class TablesService {
   constructor(private readonly tablesRepository: TablesRepository) {}
 
-  async create(createTableDto: CreateTableDto): Promise<TableRow> {
+  async create(
+    createTableDto: CreateTableDto,
+    restaurantId: string,
+  ): Promise<TableRow> {
     const existingTable = await this.tablesRepository.findByTableNumber(
       createTableDto.table_number,
     );
@@ -41,6 +44,7 @@ export class TablesService {
       location: createTableDto.location || null,
       description: createTableDto.description || null,
       status: createTableDto.status || TableStatus.AVAILABLE,
+      restaurant_id: restaurantId,
     };
 
     try {
@@ -192,8 +196,8 @@ export class TablesService {
     }
 
     const secret = process.env.QR_JWT_SECRET || 'change_this_secret';
-    // TODO: store facility id somewhere else not env (database?)
-    const restaurantId = process.env.RESTAURANT_ID || 'default_restaurant';
+    // Use restaurant_id from the table instead of env
+    const restaurantId = table.restaurant_id;
 
     const payload = {
       tableId: id,
