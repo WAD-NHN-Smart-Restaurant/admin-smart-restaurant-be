@@ -14,108 +14,274 @@ export type Database = {
   };
   public: {
     Tables: {
-      categories: {
+      menu_categories: {
         Row: {
+          created_at: string;
+          description: string | null;
           display_order: number | null;
-          id: number;
-          image_url: string | null;
-          is_active: boolean | null;
+          id: string;
           name: string;
+          restaurant_id: string;
+          status: string | null;
+          updated_at: string;
         };
         Insert: {
+          created_at?: string;
+          description?: string | null;
           display_order?: number | null;
-          id?: number;
-          image_url?: string | null;
-          is_active?: boolean | null;
+          id?: string;
           name: string;
+          restaurant_id: string;
+          status?: string | null;
+          updated_at?: string;
         };
         Update: {
+          created_at?: string;
+          description?: string | null;
           display_order?: number | null;
-          id?: number;
-          image_url?: string | null;
-          is_active?: boolean | null;
+          id?: string;
           name?: string;
-        };
-        Relationships: [];
-      };
-      modifier_options: {
-        Row: {
-          id: number;
-          modifier_id: number | null;
-          name: string;
-          price_adjustment: number | null;
-        };
-        Insert: {
-          id?: number;
-          modifier_id?: number | null;
-          name: string;
-          price_adjustment?: number | null;
-        };
-        Update: {
-          id?: number;
-          modifier_id?: number | null;
-          name?: string;
-          price_adjustment?: number | null;
+          restaurant_id?: string;
+          status?: string | null;
+          updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: 'modifier_options_modifier_id_fkey';
-            columns: ['modifier_id'];
+            foreignKeyName: 'menu_categories_restaurant_id_fkey';
+            columns: ['restaurant_id'];
             isOneToOne: false;
-            referencedRelation: 'modifiers';
+            referencedRelation: 'restaurants';
             referencedColumns: ['id'];
           },
         ];
       };
-      modifiers: {
+      menu_item_modifier_groups: {
         Row: {
-          id: number;
-          is_multiple: boolean | null;
-          is_required: boolean | null;
-          name: string;
-          product_id: number | null;
+          group_id: string;
+          menu_item_id: string;
         };
         Insert: {
-          id?: number;
-          is_multiple?: boolean | null;
-          is_required?: boolean | null;
-          name: string;
-          product_id?: number | null;
+          group_id: string;
+          menu_item_id: string;
         };
         Update: {
-          id?: number;
-          is_multiple?: boolean | null;
-          is_required?: boolean | null;
-          name?: string;
-          product_id?: number | null;
+          group_id?: string;
+          menu_item_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: 'modifiers_product_id_fkey';
-            columns: ['product_id'];
+            foreignKeyName: 'menu_item_modifier_groups_group_id_fkey';
+            columns: ['group_id'];
             isOneToOne: false;
-            referencedRelation: 'products';
+            referencedRelation: 'modifier_groups';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_item_modifier_groups_menu_item_id_fkey';
+            columns: ['menu_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_items';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      menu_item_photos: {
+        Row: {
+          created_at: string;
+          id: string;
+          is_primary: boolean | null;
+          menu_item_id: string;
+          url: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean | null;
+          menu_item_id: string;
+          url: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean | null;
+          menu_item_id?: string;
+          url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'menu_item_photos_menu_item_id_fkey';
+            columns: ['menu_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_items';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      menu_items: {
+        Row: {
+          category_id: string;
+          created_at: string;
+          description: string | null;
+          id: string;
+          is_chef_recommended: boolean | null;
+          is_deleted: boolean | null;
+          name: string;
+          prep_time_minutes: number | null;
+          price: number;
+          restaurant_id: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          category_id: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_chef_recommended?: boolean | null;
+          is_deleted?: boolean | null;
+          name: string;
+          prep_time_minutes?: number | null;
+          price: number;
+          restaurant_id: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          category_id?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_chef_recommended?: boolean | null;
+          is_deleted?: boolean | null;
+          name?: string;
+          prep_time_minutes?: number | null;
+          price?: number;
+          restaurant_id?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'menu_items_category_id_fkey';
+            columns: ['category_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_categories';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_items_restaurant_id_fkey';
+            columns: ['restaurant_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      modifier_groups: {
+        Row: {
+          created_at: string;
+          display_order: number | null;
+          id: string;
+          is_required: boolean | null;
+          max_selections: number | null;
+          min_selections: number | null;
+          name: string;
+          restaurant_id: string;
+          selection_type: string;
+          status: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          display_order?: number | null;
+          id?: string;
+          is_required?: boolean | null;
+          max_selections?: number | null;
+          min_selections?: number | null;
+          name: string;
+          restaurant_id: string;
+          selection_type?: string;
+          status?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          display_order?: number | null;
+          id?: string;
+          is_required?: boolean | null;
+          max_selections?: number | null;
+          min_selections?: number | null;
+          name?: string;
+          restaurant_id?: string;
+          selection_type?: string;
+          status?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'modifier_groups_restaurant_id_fkey';
+            columns: ['restaurant_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      modifier_options: {
+        Row: {
+          created_at: string;
+          group_id: string;
+          id: string;
+          name: string;
+          price_adjustment: number | null;
+          status: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          group_id: string;
+          id?: string;
+          name: string;
+          price_adjustment?: number | null;
+          status?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          group_id?: string;
+          id?: string;
+          name?: string;
+          price_adjustment?: number | null;
+          status?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'modifier_options_group_id_fkey';
+            columns: ['group_id'];
+            isOneToOne: false;
+            referencedRelation: 'modifier_groups';
             referencedColumns: ['id'];
           },
         ];
       };
       order_item_options: {
         Row: {
-          id: number;
-          modifier_option_id: number | null;
-          order_item_id: number | null;
+          created_at: string;
+          id: string;
+          modifier_option_id: string | null;
+          order_item_id: string | null;
           price_at_time: number | null;
         };
         Insert: {
-          id?: number;
-          modifier_option_id?: number | null;
-          order_item_id?: number | null;
+          created_at?: string;
+          id?: string;
+          modifier_option_id?: string | null;
+          order_item_id?: string | null;
           price_at_time?: number | null;
         };
         Update: {
-          id?: number;
-          modifier_option_id?: number | null;
-          order_item_id?: number | null;
+          created_at?: string;
+          id?: string;
+          modifier_option_id?: string | null;
+          order_item_id?: string | null;
           price_at_time?: number | null;
         };
         Relationships: [
@@ -137,34 +303,37 @@ export type Database = {
       };
       order_items: {
         Row: {
-          created_at: string | null;
-          id: number;
-          note: string | null;
-          order_id: number | null;
-          price_at_time: number;
-          product_id: number | null;
+          created_at: string;
+          id: string;
+          notes: string | null;
+          order_id: string;
+          product_id: string;
           quantity: number;
-          status: Database['public']['Enums']['order_item_status'] | null;
+          total_price: number;
+          unit_price: number;
+          updated_at: string;
         };
         Insert: {
-          created_at?: string | null;
-          id?: number;
-          note?: string | null;
-          order_id?: number | null;
-          price_at_time: number;
-          product_id?: number | null;
+          created_at?: string;
+          id?: string;
+          notes?: string | null;
+          order_id: string;
+          product_id: string;
           quantity?: number;
-          status?: Database['public']['Enums']['order_item_status'] | null;
+          total_price: number;
+          unit_price: number;
+          updated_at?: string;
         };
         Update: {
-          created_at?: string | null;
-          id?: number;
-          note?: string | null;
-          order_id?: number | null;
-          price_at_time?: number;
-          product_id?: number | null;
+          created_at?: string;
+          id?: string;
+          notes?: string | null;
+          order_id?: string;
+          product_id?: string;
           quantity?: number;
-          status?: Database['public']['Enums']['order_item_status'] | null;
+          total_price?: number;
+          unit_price?: number;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -178,38 +347,38 @@ export type Database = {
             foreignKeyName: 'order_items_product_id_fkey';
             columns: ['product_id'];
             isOneToOne: false;
-            referencedRelation: 'products';
+            referencedRelation: 'menu_items';
             referencedColumns: ['id'];
           },
         ];
       };
       orders: {
         Row: {
-          created_at: string | null;
+          created_at: string;
           customer_id: string | null;
-          id: number;
-          status: Database['public']['Enums']['order_status'] | null;
+          id: string;
+          status: string | null;
           table_id: string | null;
           total_amount: number | null;
-          updated_at: string | null;
+          updated_at: string;
         };
         Insert: {
-          created_at?: string | null;
+          created_at?: string;
           customer_id?: string | null;
-          id?: number;
-          status?: Database['public']['Enums']['order_status'] | null;
+          id?: string;
+          status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Update: {
-          created_at?: string | null;
+          created_at?: string;
           customer_id?: string | null;
-          id?: number;
-          status?: Database['public']['Enums']['order_status'] | null;
+          id?: string;
+          status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -231,30 +400,30 @@ export type Database = {
       payments: {
         Row: {
           amount: number;
-          created_at: string | null;
-          id: number;
-          method: Database['public']['Enums']['payment_method'] | null;
-          order_id: number | null;
-          status: Database['public']['Enums']['payment_status'] | null;
-          transaction_id: string | null;
+          created_at: string;
+          id: string;
+          order_id: string;
+          payment_method: string | null;
+          status: string | null;
+          updated_at: string;
         };
         Insert: {
           amount: number;
-          created_at?: string | null;
-          id?: number;
-          method?: Database['public']['Enums']['payment_method'] | null;
-          order_id?: number | null;
-          status?: Database['public']['Enums']['payment_status'] | null;
-          transaction_id?: string | null;
+          created_at?: string;
+          id?: string;
+          order_id: string;
+          payment_method?: string | null;
+          status?: string | null;
+          updated_at?: string;
         };
         Update: {
           amount?: number;
-          created_at?: string | null;
-          id?: number;
-          method?: Database['public']['Enums']['payment_method'] | null;
-          order_id?: number | null;
-          status?: Database['public']['Enums']['payment_status'] | null;
-          transaction_id?: string | null;
+          created_at?: string;
+          id?: string;
+          order_id?: string;
+          payment_method?: string | null;
+          status?: string | null;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -262,47 +431,6 @@ export type Database = {
             columns: ['order_id'];
             isOneToOne: false;
             referencedRelation: 'orders';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      products: {
-        Row: {
-          category_id: number | null;
-          created_at: string | null;
-          description: string | null;
-          id: number;
-          image_url: string | null;
-          is_available: boolean | null;
-          name: string;
-          price: number;
-        };
-        Insert: {
-          category_id?: number | null;
-          created_at?: string | null;
-          description?: string | null;
-          id?: number;
-          image_url?: string | null;
-          is_available?: boolean | null;
-          name: string;
-          price: number;
-        };
-        Update: {
-          category_id?: number | null;
-          created_at?: string | null;
-          description?: string | null;
-          id?: number;
-          image_url?: string | null;
-          is_available?: boolean | null;
-          name?: string;
-          price?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'products_category_id_fkey';
-            columns: ['category_id'];
-            isOneToOne: false;
-            referencedRelation: 'categories';
             referencedColumns: ['id'];
           },
         ];
@@ -334,6 +462,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      restaurants: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       tables: {
         Row: {
           capacity: number;
@@ -343,6 +492,7 @@ export type Database = {
           location: string | null;
           qr_token: string | null;
           qr_token_created_at: string | null;
+          restaurant_id: string;
           status: Database['public']['Enums']['table_status'] | null;
           table_number: string;
           updated_at: string;
@@ -355,6 +505,7 @@ export type Database = {
           location?: string | null;
           qr_token?: string | null;
           qr_token_created_at?: string | null;
+          restaurant_id: string;
           status?: Database['public']['Enums']['table_status'] | null;
           table_number: string;
           updated_at?: string;
@@ -367,11 +518,20 @@ export type Database = {
           location?: string | null;
           qr_token?: string | null;
           qr_token_created_at?: string | null;
+          restaurant_id?: string;
           status?: Database['public']['Enums']['table_status'] | null;
           table_number?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'fk_tables_restaurant';
+            columns: ['restaurant_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: {

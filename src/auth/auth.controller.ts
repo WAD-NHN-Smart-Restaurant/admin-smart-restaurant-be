@@ -56,6 +56,11 @@ export class AuthController {
           example: 'customer',
           enum: ['customer', 'staff', 'admin'],
         },
+        restaurantId: {
+          type: 'string',
+          example: 'restaurant-uuid',
+          description: 'Restaurant ID for multi-tenant setup',
+        },
       },
       required: ['email', 'password', 'name'],
     },

@@ -8,6 +8,7 @@ export interface SignUpCredentials {
   password: string;
   name: string;
   role?: string;
+  restaurantId?: string;
 }
 
 export interface SignInCredentials {
@@ -31,7 +32,13 @@ export class AuthRepository {
    * Sign up a new user with email and password
    */
   async signUp(credentials: SignUpCredentials) {
-    const { email, password, name, role = 'customer' } = credentials;
+    const {
+      email,
+      password,
+      name,
+      role = 'customer',
+      restaurantId,
+    } = credentials;
 
     const { data, error } = await this.supabase.auth.signUp({
       email,
@@ -40,6 +47,7 @@ export class AuthRepository {
         data: {
           name,
           role,
+          restaurant_id: restaurantId,
         },
         emailRedirectTo: `${process.env.FRONTEND_URL}/auth/callback`,
       },

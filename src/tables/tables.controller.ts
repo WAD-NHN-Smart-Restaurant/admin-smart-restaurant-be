@@ -23,6 +23,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
+import { GetRestaurantId } from '../auth/decorators/get-restaurant-id.decorator';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -57,8 +58,9 @@ export class TablesController {
   async create(
     @Body() createTableDto: CreateTableDto,
     @CurrentUser() user: AuthenticatedUser,
+    @GetRestaurantId() restaurantId: string,
   ) {
-    const table = await this.tablesService.create(createTableDto);
+    const table = await this.tablesService.create(createTableDto, restaurantId);
     return {
       success: true,
       message: 'Table created successfully',
