@@ -49,6 +49,7 @@ export class AuthRepository {
           role,
           restaurant_id: restaurantId,
         },
+        //TODO: Replace with actual frontend URL
         emailRedirectTo: `${process.env.FRONTEND_URL}/auth/callback`,
       },
     });

@@ -14,6 +14,8 @@ export class AdminGuard extends RolesGuard {
       return false;
     }
 
-    return requiredRoles.some((role) => user.role === role);
+    const hasRole = requiredRoles.some((role) => user.role === role);
+
+    return hasRole;
   }
 }
