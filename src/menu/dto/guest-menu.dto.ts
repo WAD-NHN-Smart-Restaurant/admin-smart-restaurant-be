@@ -8,18 +8,17 @@ import {
   Max,
   MinLength,
 } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GuestMenuQueryDto {
   @ApiPropertyOptional({
-    description: 'Search query to filter menu items by name or description',
-    example: 'pizza',
-    minLength: 1,
+    description:
+      'Restaurant ID to scope the menu (optional when using QR token)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @IsString()
+  @IsUUID()
   @IsOptional()
-  @MinLength(1)
-  q?: string; // search query
+  restaurantId?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by menu category ID',

@@ -6,9 +6,10 @@ import { MenuRepository } from './menu.repository';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { AuthModule } from '../auth/auth.module';
 import { StorageModule } from '../storage/storage.module';
+import { TablesModule } from '../tables/tables.module';
 
 @Module({
-  imports: [SupabaseModule, AuthModule, StorageModule],
+  imports: [SupabaseModule, AuthModule, StorageModule, TablesModule],
   controllers: [MenuController, GuestMenuController],
   providers: [MenuService, MenuRepository],
   exports: [MenuService, MenuRepository],

@@ -249,9 +249,13 @@ export class MenuService {
   }
 
   // Guest Menu operations
-  async getGuestMenu(restaurantId: string, queryDto: GuestMenuQueryDto) {
+  async getGuestMenu(queryDto: GuestMenuQueryDto) {
+    const { restaurantId, ...query } = queryDto;
+    if (!restaurantId) {
+      throw new BadRequestException('Restaurant ID is required');
+    }
     try {
-      return await this.menuRepository.getGuestMenu(restaurantId, queryDto);
+      return await this.menuRepository.getGuestMenu(restaurantId, query);
     } catch (error) {
       throw new BadRequestException(
         `Failed to load guest menu: ${error.message}`,
@@ -366,7 +370,19 @@ export class MenuService {
 
   // --- Admin Items List ---
   async getAdminMenuItems(restaurantId: string, queryDto: MenuItemQueryDto) {
-    return await this.menuRepository.getAdminMenuItems(restaurantId, queryDto);
+    const result = await this.menuRepository.getAdminMenuItems(
+      restaurantId,
+      queryDto,
+    );
+    const { data, count, page, limit } = result;
+
+    return {
+      items: data,
+      pagination: {
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
+    };
   }
 
   // --- Modifier Groups & Options ---

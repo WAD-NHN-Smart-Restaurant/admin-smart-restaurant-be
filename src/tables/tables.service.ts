@@ -196,8 +196,8 @@ export class TablesService {
     }
 
     const secret = process.env.QR_JWT_SECRET || 'change_this_secret';
-    // TODO: store facility id somewhere else not env (database?)
-    const restaurantId = process.env.RESTAURANT_ID || 'default_restaurant';
+    // Use restaurant_id from the table instead of env
+    const restaurantId = table.restaurant_id;
 
     const payload = {
       tableId: id,

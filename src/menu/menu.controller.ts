@@ -21,6 +21,12 @@ import {
   MenuItemQueryDto,
   AttachModifierGroupsDto,
 } from './dto/menu-item.dto';
+import {
+  MenuItemResponseDto,
+  MenuItemsListResponseDto,
+  MenuCategoryResponseDto,
+  MenuCategoriesListResponseDto,
+} from './dto/menu-response.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { SupabaseJwtAuthGuard } from '../auth/guards/supabase-jwt-auth.guard';
 import { GetRestaurantId } from '../auth/decorators/get-restaurant-id.decorator';
@@ -65,6 +71,7 @@ export class MenuController {
   @ApiResponse({
     status: 201,
     description: 'Menu item created successfully',
+    type: MenuItemResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({
@@ -97,6 +104,7 @@ export class MenuController {
   @ApiResponse({
     status: 200,
     description: 'Menu item retrieved successfully',
+    type: MenuItemResponseDto,
   })
   @ApiResponse({
     status: 401,
@@ -130,6 +138,7 @@ export class MenuController {
   @ApiResponse({
     status: 200,
     description: 'Menu item updated successfully',
+    type: MenuItemResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({
@@ -451,6 +460,7 @@ export class MenuController {
   @ApiResponse({
     status: 200,
     description: 'Categories retrieved successfully',
+    type: MenuCategoriesListResponseDto,
   })
   @ApiResponse({
     status: 401,
@@ -478,6 +488,7 @@ export class MenuController {
   @ApiResponse({
     status: 201,
     description: 'Category created successfully',
+    type: MenuCategoryResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({
@@ -516,6 +527,7 @@ export class MenuController {
   @ApiResponse({
     status: 200,
     description: 'Category updated successfully',
+    type: MenuCategoryResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({
@@ -562,6 +574,7 @@ export class MenuController {
   @ApiResponse({
     status: 200,
     description: 'Category status updated successfully',
+    type: MenuCategoryResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request - invalid status' })
   @ApiResponse({
@@ -623,6 +636,7 @@ export class MenuController {
   @ApiResponse({
     status: 200,
     description: 'Menu items retrieved successfully',
+    type: MenuItemsListResponseDto,
   })
   @ApiResponse({
     status: 401,

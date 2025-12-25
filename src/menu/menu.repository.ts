@@ -188,64 +188,119 @@ export class MenuRepository {
 
   // Guest Menu methods
   async getGuestMenu(restaurantId: string, filters: any = {}) {
+    // Determine sorting
+    let orderColumn = 'menu_categories.display_order';
+    let orderOptions = { ascending: true };
+
+    if (filters.sort === 'price_asc') {
+      orderColumn = 'price';
+      orderOptions = { ascending: true };
+    } else if (filters.sort === 'price_desc') {
+      orderColumn = 'price';
+      orderOptions = { ascending: false };
+    } else if (filters.sort === 'name') {
+      orderColumn = 'name';
+      orderOptions = { ascending: true };
+    } else if (filters.sort === 'popularity') {
+      // Assuming popularity is based on some field, for now use name
+      orderColumn = 'name';
+      orderOptions = { ascending: true };
+    }
+
     let query = this.supabase
-      .from('menu_categories')
+      .from('menu_items')
       .select(
         `
         *,
-        menu_items!inner(
-          *,
-          menu_item_photos!left(*),
-          menu_item_modifier_groups(
-            modifier_groups(
-              *,
-              modifier_options(*)
-            )
+        menu_categories!inner(*),
+        menu_item_photos!left(*),
+        menu_item_modifier_groups(
+          modifier_groups(
+            *,
+            modifier_options(*)
           )
         )
       `,
       )
-      .eq('restaurant_id', restaurantId)
-      .eq('status', 'active')
-      .eq('menu_items.is_deleted', false)
-      .eq('menu_items.status', 'available')
-      .order('display_order', { ascending: true });
+      .eq('menu_categories.restaurant_id', restaurantId)
+      .eq('menu_categories.status', 'active')
+      .eq('is_deleted', false)
+      .eq('status', 'available')
+      .order(orderColumn, orderOptions);
 
     // Apply search filter
     if (filters.q) {
-      query = query.ilike('menu_items.name', `%${filters.q}%`);
+      query = query.ilike('name', `%${filters.q}%`);
     }
 
     // Apply category filter
     if (filters.categoryId) {
-      query = query.eq('id', filters.categoryId);
+      query = query.eq('menu_categories.id', filters.categoryId);
     }
 
     // Apply chef recommended filter
     if (filters.chefRecommended === 'true') {
-      query = query.eq('menu_items.is_chef_recommended', true);
+      query = query.eq('is_chef_recommended', true);
     }
 
-    // Apply sorting
-    if (filters.sort === 'price_asc') {
-      query = query.order('menu_items.price', { ascending: true });
-    } else if (filters.sort === 'price_desc') {
-      query = query.order('menu_items.price', { ascending: false });
-    } else if (filters.sort === 'name') {
-      query = query.order('menu_items.name', { ascending: true });
-    }
-
-    // Apply pagination
+    // Apply pagination for menu items
     const page = parseInt(filters.page) || 1;
     const limit = parseInt(filters.limit) || 20;
     const offset = (page - 1) * limit;
 
-    query = query.range(offset, offset + limit - 1);
+    // Get total count separately since complex joins don't return count properly
+    let countQuery = this.supabase
+      .from('menu_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('restaurant_id', restaurantId)
+      .eq('is_deleted', false)
+      .eq('status', 'available');
 
-    const { data, error } = await query;
+    // Apply same filters to count query
+    if (filters.q) {
+      countQuery = countQuery.ilike('name', `%${filters.q}%`);
+    }
+    if (filters.categoryId) {
+      countQuery = countQuery.eq('category_id', filters.categoryId);
+    }
+    if (filters.chefRecommended === 'true') {
+      countQuery = countQuery.eq('is_chef_recommended', true);
+    }
+
+    const { count } = await countQuery;
+
+    // Get the paginated data
+    const { data, error } = await query.range(offset, offset + limit - 1);
 
     if (error) throw error;
-    return data;
+
+    // Group items by category to maintain the original structure
+    const grouped: Record<string, any> = data.reduce(
+      (acc, item) => {
+        const categoryId = item.menu_categories.id;
+        if (!acc[categoryId]) {
+          acc[categoryId] = {
+            ...item.menu_categories,
+            menu_items: [],
+          };
+        }
+        // Remove the menu_categories from the item since it's now in the parent
+        const { menu_categories, ...itemWithoutCategory } = item;
+        acc[categoryId].menu_items.push(itemWithoutCategory);
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
+
+    const categories = Object.values(grouped);
+
+    return {
+      items: categories,
+      pagination: {
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
+    };
   }
 
   // Validation methods
@@ -397,6 +452,7 @@ export class MenuRepository {
         *,
         category:menu_categories(name)
       `,
+        { count: 'exact' },
       )
       .eq('restaurant_id', restaurantId)
       .eq('is_deleted', false);

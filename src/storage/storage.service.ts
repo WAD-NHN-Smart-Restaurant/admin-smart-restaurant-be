@@ -55,9 +55,7 @@ export class StorageService {
       );
 
       // Construct the public URL.
-      const baseUrl =
-        this.configService.get<string>('R2_PUBLIC_URL') ||
-        this.configService.get<string>('R2_ENDPOINT');
+      const baseUrl = this.configService.get<string>('R2_ENDPOINT');
       const publicUrl = `${baseUrl}/${this.bucketName}/${key}`;
 
       return {
