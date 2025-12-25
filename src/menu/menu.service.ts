@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { MenuRepository } from './menu.repository';
+import { StorageService } from '../storage/storage.service';
 import {
   CreateMenuItemDto,
   UpdateMenuItemDto,
@@ -33,7 +34,10 @@ interface DbError {
 
 @Injectable()
 export class MenuService {
-  constructor(private readonly menuRepository: MenuRepository) {}
+  constructor(
+    private readonly menuRepository: MenuRepository,
+    private readonly storageService: StorageService,
+  ) {}
 
   // Menu Items CRUD operations
   async createMenuItem(restaurantId: string, createDto: CreateMenuItemDto) {
@@ -113,22 +117,42 @@ export class MenuService {
   async uploadMenuItemPhotos(
     menuItemId: string,
     restaurantId: string,
-    photos: CreateMenuItemPhotoDto[],
+    files: Express.Multer.File[],
   ) {
     // Check if item exists and belongs to restaurant
     await this.getMenuItem(menuItemId, restaurantId);
 
+    // Check if there are already photos for this item
+    const existingPhotos =
+      await this.menuRepository.findMenuItemPhotos(menuItemId);
+    const hasPrimary = existingPhotos.some((p) => p.is_primary);
+
     const uploadedPhotos = [];
-    for (const photo of photos) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       try {
+        // Upload to R2
+        const folder = `menu-items/${menuItemId}`;
+        const { url, key } = await this.storageService.uploadFile(file, folder);
+
+        // Save to DB
+        // First photo becomes primary if no primary exists
+        const isPrimary = !hasPrimary && i === 0;
+
+        const photoData = {
+          url,
+          storage_key: key,
+          is_primary: isPrimary,
+        };
+
         const uploadedPhoto = await this.menuRepository.createMenuItemPhoto(
           menuItemId,
-          photo,
+          photoData,
         );
         uploadedPhotos.push(uploadedPhoto);
       } catch (error) {
         throw new BadRequestException(
-          `Failed to upload photo: ${error.message}`,
+          `Failed to upload photo ${file.originalname}: ${error.message}`,
         );
       }
     }
@@ -151,12 +175,24 @@ export class MenuService {
     // Check if item exists and belongs to restaurant
     await this.getMenuItem(menuItemId, restaurantId);
 
+    // Find the photo to get the storage key
+    const photos = await this.menuRepository.findMenuItemPhotos(menuItemId);
+    const photoToDelete = photos.find((p) => p.id === photoId);
+
+    if (!photoToDelete) {
+      throw new NotFoundException('Photo not found');
+    }
+
     try {
+      // Delete from R2 if storage_key exists
+      if (photoToDelete.storage_key) {
+        await this.storageService.deleteFile(photoToDelete.storage_key);
+      }
+
+      // Delete from DB
       return await this.menuRepository.deleteMenuItemPhoto(photoId, menuItemId);
     } catch (error) {
-      throw new NotFoundException(
-        'Photo not found or does not belong to this menu item',
-      );
+      throw new BadRequestException(`Failed to delete photo: ${error.message}`);
     }
   }
 

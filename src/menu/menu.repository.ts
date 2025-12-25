@@ -87,7 +87,9 @@ export class MenuRepository {
       .from('menu_item_photos')
       .insert({
         menu_item_id: menuItemId,
-        ...photoData,
+        url: photoData.url,
+        storage_key: photoData.storage_key,
+        is_primary: photoData.is_primary || false,
       })
       .select()
       .single();

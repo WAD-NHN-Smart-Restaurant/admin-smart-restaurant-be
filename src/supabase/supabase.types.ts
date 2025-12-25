@@ -91,6 +91,7 @@ export type Database = {
           id: string;
           is_primary: boolean | null;
           menu_item_id: string;
+          storage_key: string | null;
           url: string;
         };
         Insert: {
@@ -98,6 +99,7 @@ export type Database = {
           id?: string;
           is_primary?: boolean | null;
           menu_item_id: string;
+          storage_key?: string | null;
           url: string;
         };
         Update: {
@@ -105,6 +107,7 @@ export type Database = {
           id?: string;
           is_primary?: boolean | null;
           menu_item_id?: string;
+          storage_key?: string | null;
           url?: string;
         };
         Relationships: [
