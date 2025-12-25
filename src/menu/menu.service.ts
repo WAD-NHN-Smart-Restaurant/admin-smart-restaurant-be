@@ -13,6 +13,23 @@ import {
 } from './dto/menu-item.dto';
 import { CreateMenuItemPhotoDto } from './dto/menu-photo.dto';
 import { GuestMenuQueryDto } from './dto/guest-menu.dto';
+import {
+  CreateCategoryDto,
+  UpdateCategoryDto,
+  CategoryQueryDto,
+  CategoryStatus,
+} from './dto/menu-category.dto';
+import {
+  CreateModifierGroupDto,
+  UpdateModifierGroupDto,
+  CreateModifierOptionDto,
+  UpdateModifierOptionDto,
+} from './dto/modifier.dto';
+
+interface DbError {
+  code?: string;
+  message?: string;
+}
 
 @Injectable()
 export class MenuService {
@@ -225,5 +242,150 @@ export class MenuService {
       groupId,
       restaurantId,
     );
+  }
+
+  // ==========================================
+  // DEV B IMPLEMENTATION
+  // ==========================================
+
+  // --- Categories ---
+  async getCategories(restaurantId: string, query: CategoryQueryDto) {
+    return await this.menuRepository.getCategories(restaurantId, query);
+  }
+
+  async createCategory(restaurantId: string, createDto: CreateCategoryDto) {
+    try {
+      // DTO fields khớp với DB columns (snake_case)
+      return await this.menuRepository.createCategory(restaurantId, createDto);
+    } catch (error) {
+      const err = error as DbError;
+      // Bắt lỗi Unique Constraint (restaurant_id, name)
+      if (err.code === '23505') {
+        throw new BadRequestException(
+          'Category name already exists in this restaurant',
+        );
+      }
+      throw new BadRequestException(
+        `Failed to create category: ${err.message}`,
+      );
+    }
+  }
+
+  async updateCategory(
+    id: string,
+    restaurantId: string,
+    updateDto: UpdateCategoryDto,
+  ) {
+    await this.getCategory(id, restaurantId); // Check exists
+    try {
+      return await this.menuRepository.updateCategory(
+        id,
+        restaurantId,
+        updateDto,
+      );
+    } catch (error) {
+      const err = error as DbError;
+      if (err.code === '23505') {
+        throw new BadRequestException('Category name already exists');
+      }
+      throw new BadRequestException(
+        `Failed to update category: ${err.message}`,
+      );
+    }
+  }
+
+  async updateCategoryStatus(
+    id: string,
+    restaurantId: string,
+    status: CategoryStatus,
+  ) {
+    return this.updateCategory(id, restaurantId, { status });
+  }
+
+  async getCategory(id: string, restaurantId: string) {
+    const category = await this.menuRepository.findCategoryById(
+      id,
+      restaurantId,
+    );
+    if (!category) throw new NotFoundException('Category not found');
+    return category;
+  }
+
+  async deleteCategory(id: string, restaurantId: string) {
+    await this.getCategory(id, restaurantId);
+
+    // Business Rule: Không xóa nếu có món active
+    const activeItemsCount =
+      await this.menuRepository.countActiveItemsInCategory(id);
+
+    // [FIX] activeItemsCount có thể là null, dùng ?? 0 để an toàn
+    if ((activeItemsCount ?? 0) > 0) {
+      throw new BadRequestException(
+        'Cannot delete category containing active menu items. Please move or delete items first.',
+      );
+    }
+
+    return await this.menuRepository.deleteCategory(id, restaurantId);
+  }
+
+  // --- Admin Items List ---
+  async getAdminMenuItems(restaurantId: string, queryDto: MenuItemQueryDto) {
+    return await this.menuRepository.getAdminMenuItems(restaurantId, queryDto);
+  }
+
+  // --- Modifier Groups & Options ---
+  async createModifierGroup(
+    restaurantId: string,
+    createDto: CreateModifierGroupDto,
+  ) {
+    return await this.menuRepository.createModifierGroup(
+      restaurantId,
+      createDto,
+    );
+  }
+
+  async updateModifierGroup(
+    id: string,
+    restaurantId: string,
+    updateDto: UpdateModifierGroupDto,
+  ) {
+    const group = await this.menuRepository.findModifierGroupById(
+      id,
+      restaurantId,
+    );
+    if (!group) throw new NotFoundException('Modifier group not found');
+
+    return await this.menuRepository.updateModifierGroup(
+      id,
+      restaurantId,
+      updateDto,
+    );
+  }
+
+  async createModifierOption(
+    groupId: string,
+    restaurantId: string,
+    createDto: CreateModifierOptionDto,
+  ) {
+    // Phải kiểm tra groupId có thuộc restaurantId không trước khi insert option
+    await this.validateModifierGroupBelongsToRestaurant(groupId, restaurantId);
+
+    return await this.menuRepository.createModifierOption(groupId, createDto);
+  }
+
+  async updateModifierOption(
+    optionId: string,
+    restaurantId: string,
+    updateDto: UpdateModifierOptionDto,
+  ) {
+    // Validate quyền sở hữu option (thông qua bảng modifier_groups)
+    const isValid = await this.menuRepository.validateOptionBelongsToRestaurant(
+      optionId,
+      restaurantId,
+    );
+    if (!isValid)
+      throw new NotFoundException('Modifier option not found or access denied');
+
+    return await this.menuRepository.updateModifierOption(optionId, updateDto);
   }
 }

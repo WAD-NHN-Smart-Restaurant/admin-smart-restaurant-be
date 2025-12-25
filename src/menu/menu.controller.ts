@@ -10,6 +10,7 @@ import {
   UploadedFiles,
   UseInterceptors,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { MenuService } from './menu.service';
@@ -21,6 +22,18 @@ import {
 } from './dto/menu-item.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { GetRestaurantId } from '../auth/decorators/get-restaurant-id.decorator';
+import {
+  CreateCategoryDto,
+  UpdateCategoryDto,
+  CategoryQueryDto,
+  CategoryStatus,
+} from './dto/menu-category.dto';
+import {
+  CreateModifierGroupDto,
+  UpdateModifierGroupDto,
+  CreateModifierOptionDto,
+  UpdateModifierOptionDto,
+} from './dto/modifier.dto';
 
 @Controller('admin/menu')
 export class MenuController {
@@ -139,5 +152,115 @@ export class MenuController {
   @Get('modifier-groups')
   async getModifierGroups(@GetRestaurantId() restaurantId: string) {
     return this.menuService.getModifierGroups(restaurantId);
+  }
+
+  // ==========================================
+  // DEV B IMPLEMENTATION
+  // ==========================================
+
+  // 1. Menu Categories APIs
+  @UseGuards(AdminGuard)
+  @Get('categories')
+  async getCategories(
+    @GetRestaurantId() restaurantId: string,
+    @Query() query: CategoryQueryDto,
+  ) {
+    return this.menuService.getCategories(restaurantId, query);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('categories')
+  async createCategory(
+    @GetRestaurantId() restaurantId: string,
+    @Body() createDto: CreateCategoryDto,
+  ) {
+    return this.menuService.createCategory(restaurantId, createDto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Put('categories/:id')
+  async updateCategory(
+    @Param('id') id: string,
+    @GetRestaurantId() restaurantId: string,
+    @Body() updateDto: UpdateCategoryDto,
+  ) {
+    return this.menuService.updateCategory(id, restaurantId, updateDto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch('categories/:id/status')
+  async updateCategoryStatus(
+    @Param('id') id: string,
+    @GetRestaurantId() restaurantId: string,
+    @Body('status') status: CategoryStatus, // Simple body: { "status": "active" }
+  ) {
+    return this.menuService.updateCategoryStatus(id, restaurantId, status);
+  }
+
+  @UseGuards(AdminGuard)
+  @Delete('categories/:id')
+  async deleteCategory(
+    @Param('id') id: string,
+    @GetRestaurantId() restaurantId: string,
+  ) {
+    return this.menuService.deleteCategory(id, restaurantId);
+  }
+
+  // 2. Menu Items List API (Admin)
+  @UseGuards(AdminGuard)
+  @Get('items')
+  async getAdminMenuItems(
+    @GetRestaurantId() restaurantId: string,
+    @Query() query: MenuItemQueryDto,
+  ) {
+    return this.menuService.getAdminMenuItems(restaurantId, query);
+  }
+
+  // 4. Menu Item Modifiers APIs
+  @UseGuards(AdminGuard)
+  @Post('modifier-groups')
+  async createModifierGroup(
+    @GetRestaurantId() restaurantId: string,
+    @Body() createDto: CreateModifierGroupDto,
+  ) {
+    return this.menuService.createModifierGroup(restaurantId, createDto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Put('modifier-groups/:id')
+  async updateModifierGroup(
+    @Param('id') id: string,
+    @GetRestaurantId() restaurantId: string,
+    @Body() updateDto: UpdateModifierGroupDto,
+  ) {
+    return this.menuService.updateModifierGroup(id, restaurantId, updateDto);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('modifier-groups/:id/options')
+  async createModifierOption(
+    @Param('id') groupId: string,
+    @GetRestaurantId() restaurantId: string,
+    @Body() createDto: CreateModifierOptionDto,
+  ) {
+    return this.menuService.createModifierOption(
+      groupId,
+      restaurantId,
+      createDto,
+    );
+  }
+
+  @UseGuards(AdminGuard)
+  @Put('modifier-options/:id')
+  async updateModifierOption(
+    @Param('id') optionId: string,
+    @GetRestaurantId() restaurantId: string,
+    @Body() updateDto: UpdateModifierOptionDto,
+  ) {
+    return this.menuService.updateModifierOption(
+      optionId,
+      restaurantId,
+      updateDto,
+    );
   }
 }
