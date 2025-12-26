@@ -6,12 +6,26 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { transformKeysToCamelCase } from './transform.util';
+import {
+  transformKeysToCamelCase,
+  transformKeysToSnakeCase,
+} from './transform.util';
 
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
   message?: string;
+}
+
+@Injectable()
+export class RequestInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const request = context.switchToHttp().getRequest();
+    if (request.body && typeof request.body === 'object') {
+      request.body = transformKeysToSnakeCase(request.body);
+    }
+    return next.handle();
+  }
 }
 
 @Injectable()

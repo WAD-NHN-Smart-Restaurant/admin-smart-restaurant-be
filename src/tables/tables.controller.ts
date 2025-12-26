@@ -95,7 +95,7 @@ export class TablesController {
     const tablesWithoutTokens = tables.map(({ qr_token, ...rest }) => rest);
     res.setHeader('Cache-Control', 'no-store');
 
-    return tablesWithoutTokens
+    return tablesWithoutTokens;
   }
 
   @Get('locations')
