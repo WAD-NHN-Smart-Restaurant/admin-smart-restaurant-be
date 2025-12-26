@@ -69,14 +69,17 @@ export class SupabaseJwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('User not found');
       }
 
-      // Extract role from user metadata or JWT payload
+      // Extract role and restaurant_id from user metadata or JWT payload
       const role = (payload.user_metadata as any)?.role ?? null;
+      const restaurantId =
+        (payload.user_metadata as any)?.restaurant_id ?? null;
 
       // Attach user to request
       request.user = {
         id: payload.sub,
         email: payload.email,
         role: role,
+        restaurantId: restaurantId,
       };
 
       return true;

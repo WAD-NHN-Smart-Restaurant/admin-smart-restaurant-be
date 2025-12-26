@@ -23,6 +23,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/decorators/current-user.decorator';
+import { GetRestaurantId } from '../auth/decorators/get-restaurant-id.decorator';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -57,13 +58,9 @@ export class TablesController {
   async create(
     @Body() createTableDto: CreateTableDto,
     @CurrentUser() user: AuthenticatedUser,
+    @GetRestaurantId() restaurantId: string,
   ) {
-    const table = await this.tablesService.create(createTableDto);
-    return {
-      success: true,
-      message: 'Table created successfully',
-      data: table,
-    };
+    return this.tablesService.create(createTableDto, restaurantId);
   }
 
   /**
@@ -90,15 +87,15 @@ export class TablesController {
   @ApiResponse({ status: 200, description: 'Tables retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async findAll(@Query() query: QueryTablesDto) {
+  async findAll(
+    @Query() query: QueryTablesDto,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
     const tables = await this.tablesService.findAll(query);
     const tablesWithoutTokens = tables.map(({ qr_token, ...rest }) => rest);
+    res.setHeader('Cache-Control', 'no-store');
 
-    return {
-      success: true,
-      message: 'Tables retrieved successfully',
-      data: tablesWithoutTokens,
-    };
+    return tablesWithoutTokens;
   }
 
   @Get('locations')
@@ -112,11 +109,7 @@ export class TablesController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async getLocations() {
     const locations = await this.tablesService.getLocations();
-    return {
-      success: true,
-      message: 'Locations retrieved successfully',
-      data: locations,
-    };
+    return locations;
   }
 
   @Get(':id')
@@ -132,11 +125,7 @@ export class TablesController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async findOne(@Param('id') id: string) {
     const result = await this.tablesService.findOneWithOrderStatus(id);
-    return {
-      success: true,
-      message: 'Table retrieved successfully',
-      data: result,
-    };
+    return result;
   }
 
   @Put(':id')
@@ -162,11 +151,7 @@ export class TablesController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const table = await this.tablesService.update(id, updateTableDto);
-    return {
-      success: true,
-      message: 'Table updated successfully',
-      data: table,
-    };
+    return table;
   }
 
   @Patch(':id/status')
@@ -197,11 +182,7 @@ export class TablesController {
       id,
       updateStatusDto.status,
     );
-    return {
-      success: true,
-      message: `Table ${updateStatusDto.status === 'available' ? 'activated' : updateStatusDto.status === 'inactive' ? 'deactivated' : 'status updated'} successfully`,
-      data: table,
-    };
+    return table;
   }
 
   @Post(':id/qr/generate')
@@ -214,7 +195,7 @@ export class TablesController {
       id,
       expiresIn ? { expiresIn } : undefined,
     );
-    return { success: true, message: 'QR code generated', data: result };
+    return result;
   }
 
   @Get(':id/qr/download')
@@ -270,10 +251,6 @@ export class TablesController {
   @ApiResponse({ status: 200, description: 'All QR codes regenerated' })
   async bulkRegenerateQrCodes() {
     const result = await this.tablesService.bulkRegenerateQRCodes();
-    return {
-      success: true,
-      message: 'Bulk QR code regeneration complete',
-      data: result,
-    };
+    return result;
   }
 }
