@@ -8,6 +8,7 @@ import {
 } from '../supabase/supabase.types';
 import { CategoryQueryDto } from './dto/menu-category.dto';
 import { MenuItemQueryDto } from './dto/menu-item.dto';
+import { mapSqlError } from '../utils/map-sql-error.util';
 
 @Injectable()
 export class MenuRepository {
@@ -26,11 +27,23 @@ export class MenuRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
+  async checkMenuItemExists(id: string, restaurantId: string): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .from('menu_items')
+      .select('id')
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId)
+      .single();
+
+    return !error && !!data;
+  }
+
   async findMenuItemById(id: string, restaurantId: string) {
+    console.log('🔍 Debug - findMenuItemById called', { id, restaurantId });
     const { data, error } = await this.supabase
       .from('menu_items')
       .select(
@@ -48,36 +61,54 @@ export class MenuRepository {
       )
       .eq('id', id)
       .eq('restaurant_id', restaurantId)
-      .eq('is_deleted', false)
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
   async updateMenuItem(id: string, restaurantId: string, updateData: any) {
+    console.log('🔍 Debug - updateMenuItem called', { id, restaurantId, updateData });
+
     const { data, error } = await this.supabase
       .from('menu_items')
       .update(updateData)
       .eq('id', id)
       .eq('restaurant_id', restaurantId)
-      .select()
+      .select(`
+        id,
+        restaurant_id,
+        category_id,
+        name,
+        description,
+        price,
+        prep_time_minutes,
+        status,
+        is_chef_recommended,
+        created_at,
+        updated_at
+      `)
       .single();
 
-    if (error) throw error;
+    console.log('🔍 Debug - updateMenuItem result', { data, error });
+
+    if (error) throw mapSqlError(error);
     return data;
   }
 
   async softDeleteMenuItem(id: string, restaurantId: string) {
     const { data, error } = await this.supabase
       .from('menu_items')
-      .update({ is_deleted: true })
+      .update({
+        is_deleted: true,
+        status: 'unavailable'
+      })
       .eq('id', id)
       .eq('restaurant_id', restaurantId)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -94,7 +125,7 @@ export class MenuRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -105,7 +136,7 @@ export class MenuRepository {
       .eq('menu_item_id', menuItemId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -118,7 +149,7 @@ export class MenuRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -138,7 +169,7 @@ export class MenuRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -162,7 +193,7 @@ export class MenuRepository {
         .insert(associations)
         .select();
 
-      if (error) throw error;
+      if (error) throw mapSqlError(error);
       return data;
     }
 
@@ -182,30 +213,30 @@ export class MenuRepository {
       .eq('status', 'active')
       .order('display_order', { ascending: true });
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
   // Guest Menu methods
   async getGuestMenu(restaurantId: string, filters: any = {}) {
     // Determine sorting
-    let orderColumn = 'menu_categories.display_order';
-    let orderOptions = { ascending: true };
+    // let orderColumn = 'menu_categories.display_order';
+    // let orderOptions = { ascending: true };
 
-    if (filters.sort === 'price_asc') {
-      orderColumn = 'price';
-      orderOptions = { ascending: true };
-    } else if (filters.sort === 'price_desc') {
-      orderColumn = 'price';
-      orderOptions = { ascending: false };
-    } else if (filters.sort === 'name') {
-      orderColumn = 'name';
-      orderOptions = { ascending: true };
-    } else if (filters.sort === 'popularity') {
-      // Assuming popularity is based on some field, for now use name
-      orderColumn = 'name';
-      orderOptions = { ascending: true };
-    }
+    // if (filters.sort === 'price_asc') {
+    //   orderColumn = 'price';
+    //   orderOptions = { ascending: true };
+    // } else if (filters.sort === 'price_desc') {
+    //   orderColumn = 'price';
+    //   orderOptions = { ascending: false };
+    // } else if (filters.sort === 'name') {
+    //   orderColumn = 'name';
+    //   orderOptions = { ascending: true };
+    // } else if (filters.sort === 'popularity') {
+    //   // Assuming popularity is based on some field, for now use name
+    //   orderColumn = 'name';
+    //   orderOptions = { ascending: true };
+    // }
 
     let query = this.supabase
       .from('menu_items')
@@ -225,8 +256,8 @@ export class MenuRepository {
       .eq('menu_categories.restaurant_id', restaurantId)
       .eq('menu_categories.status', 'active')
       .eq('is_deleted', false)
-      .eq('status', 'available')
-      .order(orderColumn, orderOptions);
+      .eq('status', 'active')
+      // .order(orderColumn, orderOptions);
 
     // Apply search filter
     if (filters.q) {
@@ -254,7 +285,7 @@ export class MenuRepository {
       .select('*', { count: 'exact', head: true })
       .eq('restaurant_id', restaurantId)
       .eq('is_deleted', false)
-      .eq('status', 'available');
+      .eq('status', 'active');
 
     // Apply same filters to count query
     if (filters.q) {
@@ -272,7 +303,7 @@ export class MenuRepository {
     // Get the paginated data
     const { data, error } = await query.range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
 
     // Group items by category to maintain the original structure
     const grouped: Record<string, any> = data.reduce(
@@ -292,7 +323,14 @@ export class MenuRepository {
       {} as Record<string, any>,
     );
 
-    const categories = Object.values(grouped);
+    let categories = Object.values(grouped);
+
+    // Sort categories by display_order if no specific sort is applied or for default case
+    if (!filters.sort || filters.sort === 'category') {
+      categories = categories.sort(
+        (a, b) => (a.display_order || 0) - (b.display_order || 0),
+      );
+    }
 
     return {
       items: categories,
@@ -349,24 +387,66 @@ export class MenuRepository {
   // --- Categories Methods ---
   async getCategories(restaurantId: string, filters: CategoryQueryDto) {
     // Sử dụng count để đếm số món active trong category
+    // Note: This counts all menu items including deleted ones.
+    // For accurate active item counts, we would need a more complex query.
     let query = this.supabase
       .from('menu_categories')
       .select('*, items_count:menu_items(count)')
       .eq('restaurant_id', restaurantId);
 
-    if (filters.q) {
-      query = query.ilike('name', `%${filters.q}%`);
+    if (filters.search) {
+      query = query.ilike('name', `%${filters.search}%`);
     }
     if (filters.status) {
       query = query.eq('status', filters.status);
     }
 
-    const sortField = filters.sort || 'display_order';
-    query = query.order(sortField, { ascending: true });
-
+    // First get all data without sorting
     const { data, error } = await query;
-    if (error) throw error;
-    return data;
+    if (error) throw mapSqlError(error);
+
+    // Sorting logic - handle itemCount sorting separately since Supabase doesn't support ordering by aggregated values
+    const sortBy = filters.sortBy || 'displayOrder';
+    const sortOrder = filters.sortOrder || 'asc';
+    const ascending = sortOrder === 'asc';
+
+    let sortedData = data;
+
+    if (sortBy === 'name') {
+      sortedData = data.sort((a, b) => {
+        const comparison = a.name.localeCompare(b.name);
+        return ascending ? comparison : -comparison;
+      });
+    } else if (sortBy === 'displayOrder') {
+      sortedData = data.sort((a, b) => {
+        const comparison = (a.display_order || 0) - (b.display_order || 0);
+        return ascending ? comparison : -comparison;
+      });
+    } else if (sortBy === 'createdAt') {
+      sortedData = data.sort((a, b) => {
+        const comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        return ascending ? comparison : -comparison;
+      });
+    } else if (sortBy === 'itemCount') {
+      sortedData = data.sort((a, b) => {
+        const aCount = Number(a.items_count) || 0;
+        const bCount = Number(b.items_count) || 0;
+        // For itemCount, reverse the logic - 'desc' means ascending, 'asc' means descending
+        if (ascending) {
+          return bCount - aCount; // 'asc': higher count first
+        } else {
+          return aCount - bCount; // 'desc': lower count first
+        }
+      });
+    } else {
+      // Default: sort by display_order ascending
+      sortedData = data.sort((a, b) => {
+        const comparison = (a.display_order || 0) - (b.display_order || 0);
+        return ascending ? comparison : -comparison;
+      });
+    }
+
+    return sortedData;
   }
 
   // Sử dụng TablesInsert<'menu_categories'> để đảm bảo đúng field DB
@@ -383,7 +463,7 @@ export class MenuRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -400,7 +480,7 @@ export class MenuRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -412,7 +492,7 @@ export class MenuRepository {
       .eq('restaurant_id', restaurantId)
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -424,7 +504,7 @@ export class MenuRepository {
       .eq('category_id', categoryId)
       .eq('is_deleted', false);
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return count;
   }
 
@@ -438,44 +518,70 @@ export class MenuRepository {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
   // --- Admin Items List ---
   async getAdminMenuItems(restaurantId: string, filters: MenuItemQueryDto) {
-    // Select thêm tên category để hiển thị
+    // Select thêm tên category, photos và modifier groups để hiển thị
     let query = this.supabase
       .from('menu_items')
       .select(
         `
         *,
-        category:menu_categories(name)
+        category:menu_categories(name),
+        menu_item_photos(id, menu_item_id, url, is_primary, created_at),
+        menu_item_modifier_groups(
+          modifier_groups(
+            id,
+            name,
+            selection_type,
+            is_required,
+            min_selections,
+            max_selections,
+            display_order,
+            status,
+            created_at,
+            updated_at,
+            modifier_options(
+              id,
+              name,
+              price_adjustment,
+              status,
+              created_at
+            )
+          )
+        )
       `,
         { count: 'exact' },
       )
       .eq('restaurant_id', restaurantId)
-      .eq('is_deleted', false);
 
-    if (filters.q) {
-      query = query.ilike('name', `%${filters.q}%`);
+    if (filters.search) {
+      query = query.ilike('name', `%${filters.search}%`);
     }
-    if (filters.category_id) {
-      query = query.eq('category_id', filters.category_id);
+    if (filters.categoryId) {
+      query = query.eq('category_id', filters.categoryId);
     }
     if (filters.status) {
       query = query.eq('status', filters.status);
     }
 
     // Sorting logic
-    if (filters.sort === 'price_asc') {
-      query = query.order('price', { ascending: true });
-    } else if (filters.sort === 'price_desc') {
-      query = query.order('price', { ascending: false });
-    } else if (filters.sort === 'created_at') {
+    const sortBy = filters.sortBy || 'createdAt';
+    const sortOrder = filters.sortOrder || 'desc';
+    const ascending = sortOrder === 'asc';
+
+    if (sortBy === 'name') {
+      query = query.order('name', { ascending });
+    } else if (sortBy === 'price') {
+      query = query.order('price', { ascending });
+    } else if (sortBy === 'createdAt') {
+      query = query.order('created_at', { ascending });
+    } else if (sortBy === 'popularity') {
+      // Assuming popularity is tracked in a field, for now sort by created_at as fallback
       query = query.order('created_at', { ascending: false });
-    } else {
-      query = query.order('name', { ascending: true });
     }
 
     // Pagination
@@ -488,8 +594,18 @@ export class MenuRepository {
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false }); // secondary sort
 
-    if (error) throw error;
-    return { data, count, page, limit };
+    if (error) throw mapSqlError(error);
+
+    // Transform data to flatten modifier groups structure and rename category
+    const transformedData = data?.map(item => ({
+        ...item,
+        menuCategories: item.category, // Rename category to menuCategories
+      menu_item_modifier_groups: item.menu_item_modifier_groups?.map(
+        (junction: any) => junction.modifier_groups
+      ).filter(Boolean) || []
+      })) || [];
+
+    return { data: transformedData, count, page, limit };
   }
 
   // --- Modifier Groups & Options ---
@@ -505,7 +621,7 @@ export class MenuRepository {
       })
       .select()
       .single();
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -521,7 +637,7 @@ export class MenuRepository {
       .eq('restaurant_id', restaurantId)
       .select()
       .single();
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -532,7 +648,7 @@ export class MenuRepository {
       .eq('id', id)
       .eq('restaurant_id', restaurantId)
       .single();
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -549,7 +665,7 @@ export class MenuRepository {
       })
       .select()
       .single();
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -563,7 +679,7 @@ export class MenuRepository {
       .eq('id', id)
       .select()
       .single();
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 

@@ -54,9 +54,9 @@ export class StorageService {
         }),
       );
 
-      // Construct the public URL.
-      const baseUrl = this.configService.get<string>('R2_ENDPOINT');
-      const publicUrl = `${baseUrl}/${this.bucketName}/${key}`;
+      // Construct the public URL using CDN URL
+      const cdnUrl = this.configService.get<string>('CDN_URL');
+      const publicUrl = `${cdnUrl}/${key}`;
 
       return {
         url: publicUrl,

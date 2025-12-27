@@ -105,6 +105,63 @@ export class MenuController {
     status: 200,
     description: 'Menu item retrieved successfully',
     type: MenuItemResponseDto,
+    example: {
+      success: true,
+      data: {
+        id: '9b141a51-9abd-494c-828d-e668917b7119',
+        restaurantId: 'c6fc043d-0b6f-4bf0-bb73-a8fc93b28106',
+        categoryId: 'd9c78f47-aa10-4fb3-b789-01b930551fd7',
+        name: 'Chocolate Lava Cake',
+        description: 'Warm chocolate cake with a rich molten center.',
+        price: 7.99,
+        prepTimeMinutes: 15,
+        status: 'available',
+        isChefRecommended: true,
+        isDeleted: false,
+        createdAt: '2025-12-25T13:47:37.14068+00:00',
+        updatedAt: '2025-12-25T13:47:37.14068+00:00',
+        menuCategories: {
+          name: 'Dessert',
+        },
+        menuItemPhotos: [
+          {
+            id: 'e0fd7fdb-781b-432f-908d-21344a0a8b10',
+            menuItemId: '9b141a51-9abd-494c-828d-e668917b7119',
+            url: 'https://94f5448449ef5d0af4d63029a1fd354f.r2.cloudflarestorage.com/menu-images/menu-items/9b141a51-9abd-494c-828d-e668917b7119/7448006a-27d5-4d93-b608-e82ea0ca507f.jpg',
+            storageKey: 'menu-items/9b141a51-9abd-494c-828d-e668917b7119/7448006a-27d5-4d93-b608-e82ea0ca507f.jpg',
+            isPrimary: true,
+            createdAt: '2025-12-25T15:54:43.334953+00:00',
+          },
+        ],
+        menuItemModifierGroups: [
+          {
+            modifierGroups: {
+              id: '64de4a84-fd21-4316-9e14-7861bcfa61fe',
+              name: 'Extra Toppings',
+              status: 'active',
+              createdAt: '2025-12-25T14:10:27.864839+00:00',
+              updatedAt: '2025-12-26T18:47:49.999346+00:00',
+              isRequired: false,
+              displayOrder: 2,
+              restaurantId: 'c6fc043d-0b6f-4bf0-bb73-a8fc93b28106',
+              maxSelections: 1,
+              minSelections: 0,
+              selectionType: 'multiple',
+              modifierOptions: [
+                {
+                  id: '943b6460-35dc-448f-b97e-57fb8cecd8ea',
+                  groupId: '64de4a84-fd21-4316-9e14-7861bcfa61fe',
+                  name: 'Chocolate Sauce',
+                  priceAdjustment: 0.75,
+                  status: 'active',
+                  createdAt: '2025-12-25T14:11:07.595169+00:00',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -155,6 +212,7 @@ export class MenuController {
     @GetRestaurantId() restaurantId: string,
     @Body() updateDto: UpdateMenuItemDto,
   ) {
+    console.log('🔍 Debug - updateMenuItem called', { id, restaurantId, updateDto });
     return this.menuService.updateMenuItem(id, restaurantId, updateDto);
   }
 

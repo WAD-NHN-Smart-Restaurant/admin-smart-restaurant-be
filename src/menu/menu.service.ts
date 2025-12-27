@@ -76,8 +76,13 @@ export class MenuService {
     restaurantId: string,
     updateDto: UpdateMenuItemDto,
   ) {
-    // Check if item exists
-    await this.getMenuItem(id, restaurantId);
+    console.log('🔍 Debug - service updateMenuItem called', { id, restaurantId, updateDto });
+    
+    // Check if item exists (simple check without complex joins)
+    const exists = await this.menuRepository.checkMenuItemExists(id, restaurantId);
+    if (!exists) {
+      throw new NotFoundException('Menu item not found');
+    }
 
     // Validate category belongs to restaurant if category_id is being updated
     if (updateDto.category_id) {
@@ -87,17 +92,14 @@ export class MenuService {
       );
     }
 
-    try {
-      return await this.menuRepository.updateMenuItem(
-        id,
-        restaurantId,
-        updateDto,
-      );
-    } catch (error) {
-      throw new BadRequestException(
-        `Failed to update menu item: ${error.message}`,
-      );
-    }
+    const result = await this.menuRepository.updateMenuItem(
+      id,
+      restaurantId,
+      updateDto,
+    );
+    
+    console.log('🔍 Debug - service updateMenuItem result', result);
+    return result;
   }
 
   async deleteMenuItem(id: string, restaurantId: string) {
@@ -379,6 +381,8 @@ export class MenuService {
     return {
       items: data,
       pagination: {
+        page,
+        limit,
         total: count || 0,
         totalPages: Math.ceil((count || 0) / limit),
       },

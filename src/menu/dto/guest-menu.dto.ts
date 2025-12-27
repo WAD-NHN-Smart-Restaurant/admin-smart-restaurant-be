@@ -68,4 +68,21 @@ export class GuestMenuQueryDto {
   @Max(100)
   @IsOptional()
   limit?: number = 20;
+
+  @ApiPropertyOptional({
+    description: 'QR token for table authentication (required for access)',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  token?: string;
+
+  @ApiPropertyOptional({
+    description: 'Table ID (optional, extracted from QR token)',
+    example: 'b83e05be-f475-4e26-aba2-eabb229a9d0c',
+  })
+  @IsUUID()
+  @IsOptional()
+  table?: string;
 }
