@@ -220,23 +220,23 @@ export class MenuRepository {
   // Guest Menu methods
   async getGuestMenu(restaurantId: string, filters: any = {}) {
     // Determine sorting
-    let orderColumn = 'menu_categories.display_order';
-    let orderOptions = { ascending: true };
+    // let orderColumn = 'menu_categories.display_order';
+    // let orderOptions = { ascending: true };
 
-    if (filters.sort === 'price_asc') {
-      orderColumn = 'price';
-      orderOptions = { ascending: true };
-    } else if (filters.sort === 'price_desc') {
-      orderColumn = 'price';
-      orderOptions = { ascending: false };
-    } else if (filters.sort === 'name') {
-      orderColumn = 'name';
-      orderOptions = { ascending: true };
-    } else if (filters.sort === 'popularity') {
-      // Assuming popularity is based on some field, for now use name
-      orderColumn = 'name';
-      orderOptions = { ascending: true };
-    }
+    // if (filters.sort === 'price_asc') {
+    //   orderColumn = 'price';
+    //   orderOptions = { ascending: true };
+    // } else if (filters.sort === 'price_desc') {
+    //   orderColumn = 'price';
+    //   orderOptions = { ascending: false };
+    // } else if (filters.sort === 'name') {
+    //   orderColumn = 'name';
+    //   orderOptions = { ascending: true };
+    // } else if (filters.sort === 'popularity') {
+    //   // Assuming popularity is based on some field, for now use name
+    //   orderColumn = 'name';
+    //   orderOptions = { ascending: true };
+    // }
 
     let query = this.supabase
       .from('menu_items')
@@ -257,7 +257,7 @@ export class MenuRepository {
       .eq('menu_categories.status', 'active')
       .eq('is_deleted', false)
       .eq('status', 'available')
-      .order(orderColumn, orderOptions);
+      // .order(orderColumn, orderOptions);
 
     // Apply search filter
     if (filters.q) {
