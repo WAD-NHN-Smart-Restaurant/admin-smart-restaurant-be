@@ -98,10 +98,25 @@ export class TablesRepository {
       query = query.eq('location', filters.location);
     }
 
-    // Apply sorting
+    // Apply sorting - map camelCase to snake_case for database columns
     const sortBy = filters.sortBy || 'created_at';
+    let dbSortBy = sortBy;
+    
+    // Map camelCase field names to database column names
+    switch (sortBy) {
+      case 'tableNumber':
+        dbSortBy = 'table_number';
+        break;
+      case 'createdAt':
+        dbSortBy = 'created_at';
+        break;
+      // 'capacity' is already correct
+      default:
+        dbSortBy = sortBy;
+    }
+    
     const sortOrder = filters.sortOrder || 'asc';
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+    query = query.order(dbSortBy, { ascending: sortOrder === 'asc' });
 
     const { data, error } = await query;
 
