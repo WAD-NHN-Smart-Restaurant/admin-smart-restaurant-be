@@ -33,10 +33,10 @@ export class MenuRepository {
 
   async checkMenuItemExists(id: string, restaurantId: string): Promise<boolean> {
     const { data, error } = await this.supabase
-    .from('menu_items')
-    .select('id')
-    .eq('id', id)
-    .eq('restaurant_id', restaurantId)
+      .from('menu_items')
+      .select('id')
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId)
       .single();
 
     return !error && !!data;
@@ -69,7 +69,7 @@ export class MenuRepository {
 
   async updateMenuItem(id: string, restaurantId: string, updateData: any) {
     console.log('🔍 Debug - updateMenuItem called', { id, restaurantId, updateData });
-    
+
     const { data, error } = await this.supabase
       .from('menu_items')
       .update(updateData)
@@ -99,7 +99,7 @@ export class MenuRepository {
   async softDeleteMenuItem(id: string, restaurantId: string) {
     const { data, error } = await this.supabase
       .from('menu_items')
-      .update({ 
+      .update({
         is_deleted: true,
         status: 'unavailable'
       })
@@ -220,23 +220,23 @@ export class MenuRepository {
   // Guest Menu methods
   async getGuestMenu(restaurantId: string, filters: any = {}) {
     // Determine sorting
-    let orderColumn = 'menu_categories.display_order';
-    let orderOptions = { ascending: true };
+    // let orderColumn = 'menu_categories.display_order';
+    // let orderOptions = { ascending: true };
 
-    if (filters.sort === 'price_asc') {
-      orderColumn = 'price';
-      orderOptions = { ascending: true };
-    } else if (filters.sort === 'price_desc') {
-      orderColumn = 'price';
-      orderOptions = { ascending: false };
-    } else if (filters.sort === 'name') {
-      orderColumn = 'name';
-      orderOptions = { ascending: true };
-    } else if (filters.sort === 'popularity') {
-      // Assuming popularity is based on some field, for now use name
-      orderColumn = 'name';
-      orderOptions = { ascending: true };
-    }
+    // if (filters.sort === 'price_asc') {
+    //   orderColumn = 'price';
+    //   orderOptions = { ascending: true };
+    // } else if (filters.sort === 'price_desc') {
+    //   orderColumn = 'price';
+    //   orderOptions = { ascending: false };
+    // } else if (filters.sort === 'name') {
+    //   orderColumn = 'name';
+    //   orderOptions = { ascending: true };
+    // } else if (filters.sort === 'popularity') {
+    //   // Assuming popularity is based on some field, for now use name
+    //   orderColumn = 'name';
+    //   orderOptions = { ascending: true };
+    // }
 
     let query = this.supabase
       .from('menu_items')
@@ -257,7 +257,7 @@ export class MenuRepository {
       .eq('menu_categories.status', 'active')
       .eq('is_deleted', false)
       .eq('status', 'active')
-      .order(orderColumn, orderOptions);
+      // .order(orderColumn, orderOptions);
 
     // Apply search filter
     if (filters.q) {
@@ -323,7 +323,14 @@ export class MenuRepository {
       {} as Record<string, any>,
     );
 
-    const categories = Object.values(grouped);
+    let categories = Object.values(grouped);
+
+    // Sort categories by display_order if no specific sort is applied or for default case
+    if (!filters.sort || filters.sort === 'category') {
+      categories = categories.sort(
+        (a, b) => (a.display_order || 0) - (b.display_order || 0),
+      );
+    }
 
     return {
       items: categories,
@@ -591,12 +598,12 @@ export class MenuRepository {
 
     // Transform data to flatten modifier groups structure and rename category
     const transformedData = data?.map(item => ({
-      ...item,
-      menuCategories: item.category, // Rename category to menuCategories
+        ...item,
+        menuCategories: item.category, // Rename category to menuCategories
       menu_item_modifier_groups: item.menu_item_modifier_groups?.map(
         (junction: any) => junction.modifier_groups
       ).filter(Boolean) || []
-    })) || [];
+      })) || [];
 
     return { data: transformedData, count, page, limit };
   }
