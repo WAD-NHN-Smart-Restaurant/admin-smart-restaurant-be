@@ -155,6 +155,7 @@ export class MenuController {
     @GetRestaurantId() restaurantId: string,
     @Body() updateDto: UpdateMenuItemDto,
   ) {
+    console.log('🔍 Debug - updateMenuItem called', { id, restaurantId, updateDto });
     return this.menuService.updateMenuItem(id, restaurantId, updateDto);
   }
 

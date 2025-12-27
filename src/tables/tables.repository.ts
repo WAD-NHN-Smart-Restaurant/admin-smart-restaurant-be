@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../utils/const';
 import { Database } from '../supabase/supabase.types';
+import { mapSqlError } from '../utils/map-sql-error.util';
 
 type TableRow = Database['public']['Tables']['tables']['Row'];
 type TableInsert = Database['public']['Tables']['tables']['Insert'];
@@ -21,7 +22,7 @@ export class TablesRepository {
       .single();
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data;
@@ -35,7 +36,7 @@ export class TablesRepository {
       .maybeSingle();
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data;
@@ -57,7 +58,7 @@ export class TablesRepository {
       .maybeSingle();
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data;
@@ -71,7 +72,7 @@ export class TablesRepository {
       .maybeSingle();
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data;
@@ -105,7 +106,7 @@ export class TablesRepository {
     const { data, error } = await query;
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data || [];
@@ -123,7 +124,7 @@ export class TablesRepository {
       .single();
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data;
@@ -147,7 +148,7 @@ export class TablesRepository {
       .single();
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data;
@@ -164,7 +165,7 @@ export class TablesRepository {
       .in('status', ['active', 'payment_pending']);
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return count || 0;
@@ -177,7 +178,7 @@ export class TablesRepository {
       .not('location', 'is', null);
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     // Extract unique locations
@@ -205,7 +206,7 @@ export class TablesRepository {
       .single();
 
     if (error) {
-      throw error;
+      throw mapSqlError(error);
     }
 
     return data;

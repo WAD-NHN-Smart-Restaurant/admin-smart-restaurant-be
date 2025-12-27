@@ -102,7 +102,7 @@ export class CategoryQueryDto {
   })
   @IsString()
   @IsOptional()
-  q?: string;
+  search?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by category status',
@@ -115,10 +115,19 @@ export class CategoryQueryDto {
 
   @ApiPropertyOptional({
     description: 'Sort field',
-    enum: ['display_order', 'name', 'created_at'],
-    example: 'display_order',
+    enum: ['name', 'displayOrder', 'itemCount', 'createdAt'],
+    example: 'displayOrder',
   })
   @IsString()
   @IsOptional()
-  sort?: 'display_order' | 'name' | 'created_at';
+  sortBy?: 'name' | 'displayOrder' | 'itemCount' | 'createdAt';
+
+  @ApiPropertyOptional({
+    description: 'Sort order',
+    enum: ['asc', 'desc'],
+    example: 'asc',
+  })
+  @IsString()
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc';
 }

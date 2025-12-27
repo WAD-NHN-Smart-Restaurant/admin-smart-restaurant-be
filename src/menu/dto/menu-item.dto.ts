@@ -158,7 +158,7 @@ export class MenuItemQueryDto {
   })
   @IsString()
   @IsOptional()
-  q?: string; // search query
+  search?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by menu category ID',
@@ -166,7 +166,7 @@ export class MenuItemQueryDto {
   })
   @IsUUID()
   @IsOptional()
-  category_id?: string;
+  categoryId?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by menu item status',
@@ -178,13 +178,22 @@ export class MenuItemQueryDto {
   status?: MenuItemStatus;
 
   @ApiPropertyOptional({
-    description: 'Sort order for the results',
-    example: 'name',
-    enum: ['name', 'price_asc', 'price_desc', 'created_at'],
+    description: 'Sort field for the results',
+    example: 'createdAt',
+    enum: ['name', 'price', 'createdAt', 'popularity'],
   })
   @IsString()
   @IsOptional()
-  sort?: 'name' | 'price_asc' | 'price_desc' | 'created_at';
+  sortBy?: 'name' | 'price' | 'createdAt' | 'popularity';
+
+  @ApiPropertyOptional({
+    description: 'Sort order for the results',
+    example: 'desc',
+    enum: ['asc', 'desc'],
+  })
+  @IsString()
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc';
 
   @ApiPropertyOptional({
     description: 'Page number for pagination',

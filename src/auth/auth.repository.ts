@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../utils/const';
 import { Database } from '../supabase/supabase.types';
+import { mapSqlError } from '../utils/map-sql-error.util';
 
 export interface SignUpCredentials {
   email: string;
@@ -54,7 +55,7 @@ export class AuthRepository {
       },
     });
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -69,7 +70,7 @@ export class AuthRepository {
       password,
     });
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -78,7 +79,7 @@ export class AuthRepository {
    */
   async signOut() {
     const { data, error } = await this.supabase.auth.getSession();
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
 
     const accessToken = data.session?.access_token;
 
@@ -97,7 +98,7 @@ export class AuthRepository {
    */
   async getUser(accessToken: string) {
     const { data, error } = await this.supabase.auth.getUser(accessToken);
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data.user;
   }
 
@@ -106,7 +107,7 @@ export class AuthRepository {
    */
   async getUserById(userId: string) {
     const { data, error } = await this.supabase.auth.admin.getUserById(userId);
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data.user;
   }
 
@@ -117,7 +118,7 @@ export class AuthRepository {
     const { data, error } = await this.supabase.auth.refreshSession({
       refresh_token: refreshToken,
     });
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -129,7 +130,7 @@ export class AuthRepository {
       token_hash: tokenHash,
       type,
     });
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -146,7 +147,7 @@ export class AuthRepository {
       },
     );
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -160,7 +161,7 @@ export class AuthRepository {
       password: newPassword,
     });
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 
@@ -175,7 +176,7 @@ export class AuthRepository {
       },
     );
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data.user;
   }
 
@@ -188,7 +189,7 @@ export class AuthRepository {
       email,
     });
 
-    if (error) throw error;
+    if (error) throw mapSqlError(error);
     return data;
   }
 }
