@@ -38,7 +38,7 @@ export class GuestMenuController {
   })
   async getGuestMenu(@Query() query: GuestMenuQueryDto, @Req() request: any) {
     // Get restaurantId from QR token, fallback to query param for backward compatibility
-    const restaurantId = request.qrToken?.restaurantId || query.restaurantId;
+    const restaurantId = request.restaurantId || query.restaurantId;
     if (!restaurantId) {
       throw new BadRequestException('Restaurant ID is required');
     }
