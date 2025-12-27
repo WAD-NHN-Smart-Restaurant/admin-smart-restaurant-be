@@ -517,13 +517,35 @@ export class MenuRepository {
 
   // --- Admin Items List ---
   async getAdminMenuItems(restaurantId: string, filters: MenuItemQueryDto) {
-    // Select thêm tên category để hiển thị
+    // Select thêm tên category, photos và modifier groups để hiển thị
     let query = this.supabase
       .from('menu_items')
       .select(
         `
         *,
-        category:menu_categories(name)
+        category:menu_categories(name),
+        menu_item_photos(id, menu_item_id, url, is_primary, created_at),
+        menu_item_modifier_groups(
+          modifier_groups(
+            id,
+            name,
+            selection_type,
+            is_required,
+            min_selections,
+            max_selections,
+            display_order,
+            status,
+            created_at,
+            updated_at,
+            modifier_options(
+              id,
+              name,
+              price_adjustment,
+              status,
+              created_at
+            )
+          )
+        )
       `,
         { count: 'exact' },
       )
@@ -566,7 +588,17 @@ export class MenuRepository {
       .order('created_at', { ascending: false }); // secondary sort
 
     if (error) throw mapSqlError(error);
-    return { data, count, page, limit };
+
+    // Transform data to flatten modifier groups structure and rename category
+    const transformedData = data?.map(item => ({
+      ...item,
+      menuCategories: item.category, // Rename category to menuCategories
+      menu_item_modifier_groups: item.menu_item_modifier_groups?.map(
+        (junction: any) => junction.modifier_groups
+      ).filter(Boolean) || []
+    })) || [];
+
+    return { data: transformedData, count, page, limit };
   }
 
   // --- Modifier Groups & Options ---

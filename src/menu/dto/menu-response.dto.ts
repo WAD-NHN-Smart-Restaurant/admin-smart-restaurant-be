@@ -6,16 +6,19 @@ export class MenuItemPhotoResponseDto {
   id: string;
 
   @ApiProperty()
+  menuItemId: string;
+
+  @ApiProperty()
   url: string;
 
   @ApiPropertyOptional()
-  is_primary?: boolean;
+  storageKey?: string;
 
   @ApiPropertyOptional()
-  display_order?: number;
+  isPrimary?: boolean;
 
   @ApiProperty()
-  created_at: string;
+  createdAt: string;
 }
 
 export class ModifierOptionResponseDto {
@@ -23,22 +26,19 @@ export class ModifierOptionResponseDto {
   id: string;
 
   @ApiProperty()
+  groupId: string;
+
+  @ApiProperty()
   name: string;
 
-  @ApiProperty()
-  price: number;
+  @ApiPropertyOptional()
+  priceAdjustment?: number;
 
   @ApiPropertyOptional()
-  description?: string;
+  status?: string;
 
   @ApiProperty()
-  is_available: boolean;
-
-  @ApiProperty()
-  created_at: string;
-
-  @ApiProperty()
-  updated_at: string;
+  createdAt: string;
 }
 
 export class ModifierGroupResponseDto {
@@ -46,25 +46,42 @@ export class ModifierGroupResponseDto {
   id: string;
 
   @ApiProperty()
+  restaurantId: string;
+
+  @ApiProperty()
   name: string;
 
+  @ApiProperty()
+  selectionType: string;
+
   @ApiPropertyOptional()
-  description?: string;
+  isRequired?: boolean;
+
+  @ApiPropertyOptional()
+  minSelections?: number;
+
+  @ApiPropertyOptional()
+  maxSelections?: number;
+
+  @ApiPropertyOptional()
+  displayOrder?: number;
+
+  @ApiPropertyOptional()
+  status?: string;
 
   @ApiProperty()
-  is_required: boolean;
+  createdAt: string;
 
   @ApiProperty()
-  max_selections: number;
-
-  @ApiProperty()
-  created_at: string;
-
-  @ApiProperty()
-  updated_at: string;
+  updatedAt: string;
 
   @ApiProperty({ type: [ModifierOptionResponseDto] })
-  modifier_options: ModifierOptionResponseDto[];
+  modifierOptions: ModifierOptionResponseDto[];
+}
+
+export class MenuCategoryNestedResponseDto {
+  @ApiProperty()
+  name: string;
 }
 
 export class MenuItemResponseDto {
@@ -72,37 +89,46 @@ export class MenuItemResponseDto {
   id: string;
 
   @ApiProperty()
-  name: string;
+  restaurantId: string;
 
   @ApiProperty()
-  price: number;
+  categoryId: string;
+
+  @ApiProperty()
+  name: string;
 
   @ApiPropertyOptional()
   description?: string;
 
   @ApiProperty()
-  status: MenuItemStatus;
-
-  @ApiProperty()
-  is_chef_recommended: boolean;
+  price: number;
 
   @ApiPropertyOptional()
-  category_id?: string;
+  prepTimeMinutes?: number;
 
   @ApiProperty()
-  restaurant_id: string;
+  status: MenuItemStatus;
+
+  @ApiPropertyOptional()
+  isChefRecommended?: boolean;
+
+  @ApiPropertyOptional()
+  isDeleted?: boolean;
+
+  @ApiProperty()
+  createdAt: string;
+
+  @ApiProperty()
+  updatedAt: string;
+
+  @ApiProperty({ type: MenuCategoryNestedResponseDto })
+  menuCategories: MenuCategoryNestedResponseDto;
 
   @ApiProperty({ type: [MenuItemPhotoResponseDto] })
-  menu_item_photos: MenuItemPhotoResponseDto[];
+  menuItemPhotos: MenuItemPhotoResponseDto[];
 
   @ApiProperty({ type: [ModifierGroupResponseDto] })
-  menu_item_modifier_groups: ModifierGroupResponseDto[];
-
-  @ApiProperty()
-  created_at: string;
-
-  @ApiProperty()
-  updated_at: string;
+  menuItemModifierGroups: ModifierGroupResponseDto[];
 }
 
 export class MenuCategoryResponseDto {
