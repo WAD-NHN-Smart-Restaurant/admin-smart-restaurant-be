@@ -28,7 +28,7 @@ export function mapSqlError(error: PostgrestError | AuthError): Error {
         return new InternalServerErrorException(error.message);
     }
   }
-  
+
   // Handle AuthError and other errors
   return new InternalServerErrorException(error.message);
 }

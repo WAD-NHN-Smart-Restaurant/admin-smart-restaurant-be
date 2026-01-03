@@ -7,18 +7,18 @@ import {
   Min,
   Max,
   MinLength,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GuestMenuQueryDto {
   @ApiPropertyOptional({
-    description:
-      'Restaurant ID to scope the menu (optional when using QR token)',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Search by menu item name (partial match)',
+    example: 'pizza',
   })
-  @IsUUID()
+  @IsString()
   @IsOptional()
-  restaurantId?: string;
+  search?: string;
 
   @ApiPropertyOptional({
     description: 'Filter by menu category ID',
@@ -37,13 +37,22 @@ export class GuestMenuQueryDto {
   chefRecommended?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Sort order for the results',
+    description: 'Sort by field',
     example: 'name',
-    enum: ['name', 'price_asc', 'price_desc', 'popularity'],
+    enum: ['name', 'price', 'popularity'],
   })
-  @IsString()
+  @IsEnum(['name', 'price', 'popularity'])
   @IsOptional()
-  sort?: 'name' | 'price_asc' | 'price_desc' | 'popularity';
+  sortBy?: 'name' | 'price' | 'popularity';
+
+  @ApiPropertyOptional({
+    description: 'Sort order',
+    example: 'asc',
+    enum: ['asc', 'desc'],
+  })
+  @IsEnum(['asc', 'desc'])
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc';
 
   @ApiPropertyOptional({
     description: 'Page number for pagination',

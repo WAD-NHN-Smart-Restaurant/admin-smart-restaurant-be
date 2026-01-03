@@ -58,6 +58,16 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('Auth', 'Authentication endpoints')
     .addTag('Tables', 'Table management endpoints')
+    .addTag('Menu Items - Admin', 'Admin menu item management endpoints')
+    .addTag('Menu Items - Guest', 'Guest menu item access endpoints')
+    .addTag(
+      'Menu Categories - Admin',
+      'Admin menu category management endpoints',
+    )
+    .addTag(
+      'Modifier Groups - Admin',
+      'Admin modifier group management endpoints',
+    )
     .addBearerAuth(
       {
         type: 'http',

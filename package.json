@@ -19,8 +19,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "gen:types": "supabase gen types typescript --project-id yhmvzieedncvvpzomlnf > src/supabase/supabase.types.ts",
-    "migrate:up": "supabase migration up --db-url postgresql://postgres.yhmvzieedncvvpzomlnf:WADfinalprjDB2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres",
+    "gen:types": "supabase gen types typescript --project-id qeiibzyasdygqrkyamtn > src/supabase/supabase.types.ts",
+    "migrate:up": "supabase migration up --db-url postgresql://postgres.qeiibzyasdygqrkyamtn:12909014ihN@@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres",
     "create:migration": "supabase migration new"
   },
   "dependencies": {
