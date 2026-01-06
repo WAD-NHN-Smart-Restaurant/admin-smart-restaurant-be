@@ -20,6 +20,16 @@ ALTER TABLE public.order_items
 ALTER TABLE public.order_items
   ADD COLUMN status order_item_status DEFAULT 'pending' NOT NULL;
 
+UPDATE public.menu_items
+SET status = 'unavailable'
+WHERE is_deleted = TRUE;
+
+ALTER TABLE public.menu_items
+ALTER COLUMN is_deleted DROP DEFAULT;
+
+ALTER TABLE public.menu_items
+DROP COLUMN is_deleted;
+
 -- Create function to calculate menu item popularity
 CREATE OR REPLACE FUNCTION calculate_menu_item_popularity(
   restaurant_id_param UUID,

@@ -1,10 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import {
-  CreateModifierGroupDto,
-  UpdateModifierGroupDto,
-  CreateModifierOptionDto,
-  UpdateModifierOptionDto,
-} from './dto/modifier.dto';
+import { CreateModifierGroupDto } from './dto/create-modifier-group.dto';
+import { UpdateModifierGroupDto } from './dto/update-modifier-group.dto';
+import { ModifierStatus } from './dto/modifier.enums';
 import { ModifierGroupRepository } from './modifier-group.repository';
 
 @Injectable()
@@ -18,9 +15,14 @@ export class ModifierGroupService {
     restaurantId: string,
     createDto: CreateModifierGroupDto,
   ) {
+    const groupData = {
+      ...createDto,
+      status: createDto.status || ModifierStatus.ACTIVE,
+    };
+
     return await this.modifierGroupRepository.createModifierGroup(
       restaurantId,
-      createDto,
+      groupData,
     );
   }
 
@@ -58,37 +60,16 @@ export class ModifierGroupService {
     );
   }
 
-  async createModifierOption(
-    groupId: string,
-    restaurantId: string,
-    createDto: CreateModifierOptionDto,
-  ) {
-    // Phải kiểm tra groupId có thuộc restaurantId không trước khi insert option
-    await this.validateModifierGroupBelongsToRestaurant(groupId, restaurantId);
-
-    return await this.modifierGroupRepository.createModifierOption(
-      groupId,
-      createDto,
+  async softDeleteModifierGroup(id: string, restaurantId: string) {
+    const group = await this.modifierGroupRepository.findModifierGroupById(
+      id,
+      restaurantId,
     );
-  }
+    if (!group) throw new NotFoundException('Modifier group not found');
 
-  async updateModifierOption(
-    optionId: string,
-    restaurantId: string,
-    updateDto: UpdateModifierOptionDto,
-  ) {
-    // Validate quyền sở hữu option (thông qua bảng modifier_groups)
-    const isValid =
-      await this.modifierGroupRepository.validateOptionBelongsToRestaurant(
-        optionId,
-        restaurantId,
-      );
-    if (!isValid)
-      throw new NotFoundException('Modifier option not found or access denied');
-
-    return await this.modifierGroupRepository.updateModifierOption(
-      optionId,
-      updateDto,
+    return await this.modifierGroupRepository.softDeleteModifierGroup(
+      id,
+      restaurantId,
     );
   }
 }

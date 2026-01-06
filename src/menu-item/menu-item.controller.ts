@@ -24,6 +24,9 @@ import {
 import {
   MenuItemResponseDto,
   MenuItemsListResponseDto,
+  MenuItemPhotoResponseDto,
+  ModifierGroupResponseDto,
+  ModifierOptionResponseDto,
 } from './dto/menu-response.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { SupabaseJwtAuthGuard } from '../auth/guards/supabase-jwt-auth.guard';
@@ -36,8 +39,14 @@ import {
   ApiParam,
   ApiConsumes,
   ApiBearerAuth,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 
+@ApiExtraModels(
+  MenuItemPhotoResponseDto,
+  ModifierGroupResponseDto,
+  ModifierOptionResponseDto,
+)
 @ApiTags('Menu Items - Admin')
 @ApiBearerAuth('JWT-auth')
 @Controller('admin/menu/items')
@@ -132,9 +141,7 @@ export class MenuItemController {
         isDeleted: false,
         createdAt: '2025-12-25T13:47:37.14068+00:00',
         updatedAt: '2025-12-25T13:47:37.14068+00:00',
-        menuCategories: {
-          name: 'Dessert',
-        },
+        categoryName: 'Dessert',
         menuItemPhotos: [
           {
             id: 'e0fd7fdb-781b-432f-908d-21344a0a8b10',

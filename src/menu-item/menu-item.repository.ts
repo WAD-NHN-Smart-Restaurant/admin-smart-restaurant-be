@@ -7,6 +7,10 @@ import { mapSqlError } from '../utils/map-sql-error.util';
 import { MenuCategoryStatus } from '../common/database-enums';
 
 const MENU_CATEGORY_STATUS_ACTIVE: MenuCategoryStatus = 'active';
+const MENU_MODIFIER_GROUPS_STATUS_ACTIVE: MenuCategoryStatus = 'active';
+const MENU_MODIFIER_OPTIONS_STATUS_ACTIVE: MenuCategoryStatus = 'active';
+const MENU_ITEM_STATUS_AVAILABLE = 'available';
+const MENU_ITEM_STATUS_SOLD_OUT = 'sold_out';
 
 export type MenuItemFilter = {
   search?: string;
@@ -202,7 +206,6 @@ export class MenuItemRepository {
   }
 
   async findMenuItemById(id: string, restaurantId: string) {
-    console.log('🔍 Debug - findMenuItemById called', { id, restaurantId });
     const { data, error } = await this.supabase
       .from('menu_items')
       .select(
@@ -265,7 +268,6 @@ export class MenuItemRepository {
     const { data, error } = await this.supabase
       .from('menu_items')
       .update({
-        is_deleted: true,
         status: 'unavailable',
       })
       .eq('id', id)
@@ -428,7 +430,7 @@ export class MenuItemRepository {
       )
       .eq('menu_categories.restaurant_id', restaurantId)
       .eq('menu_categories.status', MENU_CATEGORY_STATUS_ACTIVE)
-      .eq('is_deleted', false);
+      .in('status', [MENU_ITEM_STATUS_AVAILABLE, MENU_ITEM_STATUS_SOLD_OUT]);
 
     // Apply filters
     query = this.applyMenuItemFilters(
@@ -441,9 +443,32 @@ export class MenuItemRepository {
     const { data: allItems, error } = await query;
     if (error) throw mapSqlError(error);
 
+    // Filter out inactive modifier groups and options
+    const filteredItems = (allItems || []).map((item) => ({
+      ...item,
+      menu_item_modifier_groups:
+        item.menu_item_modifier_groups
+          ?.filter(
+            (junction: any) =>
+              junction.modifier_groups?.status ===
+              MENU_MODIFIER_GROUPS_STATUS_ACTIVE,
+          )
+          .map((junction: any) => ({
+            ...junction,
+            modifier_groups: {
+              ...junction.modifier_groups,
+              modifier_options:
+                junction.modifier_groups?.modifier_options?.filter(
+                  (option: any) =>
+                    option.status === MENU_MODIFIER_OPTIONS_STATUS_ACTIVE,
+                ) || [],
+            },
+          })) || [],
+    }));
+
     // Add popularity and sort
     const itemsWithPopularity = await this.addPopularityToMenuItems(
-      allItems || [],
+      filteredItems,
       restaurantId,
     );
     const sortedItems = this.sortMenuItems(
@@ -452,30 +477,18 @@ export class MenuItemRepository {
       sortOrder,
     );
 
-    // Paginate and group by category
+    // Paginate items
     const pagination = this.paginateItems(sortedItems, page, limit);
 
-    // Group items by category to maintain the original structure
-    const grouped: Record<string, any> = pagination.items.reduce(
-      (acc, item) => {
-        const categoryId = item.menu_categories.id;
-        if (!acc[categoryId]) {
-          acc[categoryId] = {
-            ...item.menu_categories,
-            menu_items: [],
-          };
-        }
-        const { menu_categories, ...itemWithoutCategory } = item;
-        acc[categoryId].menu_items.push(itemWithoutCategory);
-        return acc;
-      },
-      {} as Record<string, any>,
-    );
-
-    const groupedCategories = Object.values(grouped);
+    // Add category name to each item and flatten the structure
+    const itemsWithCategoryName = pagination.items.map((item) => ({
+      ...item,
+      categoryName: item.menu_categories?.name || null,
+      menu_categories: undefined, // Remove the nested menu_categories object
+    }));
 
     return {
-      items: groupedCategories,
+      items: itemsWithCategoryName,
       pagination: {
         total: pagination.total,
         totalPages: pagination.totalPages,
@@ -553,7 +566,8 @@ export class MenuItemRepository {
     // Transform data to flatten modifier groups structure and rename category
     const transformedData = pagination.items.map((item) => ({
       ...item,
-      menuCategories: item.category,
+      categoryName: item.category?.name,
+      category: undefined, // Remove the nested category object
       menu_item_modifier_groups:
         item.menu_item_modifier_groups
           ?.map((junction: any) => junction.modifier_groups)

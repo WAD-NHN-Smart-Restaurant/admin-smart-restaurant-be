@@ -10,8 +10,6 @@ import { CategoryQueryDto } from './dto/menu-category.dto';
 import { mapSqlError } from '../utils/map-sql-error.util';
 import { MenuCategoryStatus } from '../common/database-enums';
 
-// Enum constants for magic strings
-const MENU_CATEGORY_STATUS_ACTIVE: MenuCategoryStatus = 'active';
 const MENU_CATEGORY_STATUS_INACTIVE: MenuCategoryStatus = 'inactive';
 
 @Injectable()
@@ -85,6 +83,18 @@ export class MenuCategoryRepository {
     return sortedData;
   }
 
+  async getActiveCategories(restaurantId: string) {
+    const { data, error } = await this.supabase
+      .from('menu_categories')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('status', 'active')
+      .order('display_order', { ascending: true });
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
   // Sử dụng TablesInsert<'menu_categories'> để đảm bảo đúng field DB
   async createCategory(
     restaurantId: string,
@@ -133,12 +143,11 @@ export class MenuCategoryRepository {
   }
 
   async countActiveItemsInCategory(categoryId: string) {
-    // is_deleted là boolean trong schema
     const { count, error } = await this.supabase
       .from('menu_items')
       .select('*', { count: 'exact', head: true })
       .eq('category_id', categoryId)
-      .eq('is_deleted', false);
+      .in('status', ['available', 'sold_out']);
 
     if (error) throw mapSqlError(error);
     return count;

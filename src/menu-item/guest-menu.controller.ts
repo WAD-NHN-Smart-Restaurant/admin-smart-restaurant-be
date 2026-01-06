@@ -1,11 +1,27 @@
 import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
 import { MenuItemService } from './menu-item.service';
 import { GuestMenuQueryDto } from './dto/guest-menu.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiExtraModels,
+} from '@nestjs/swagger';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
 import { BadRequestException } from '@nestjs/common';
-import { MenuCategoriesListResponseDto } from './dto/menu-response.dto';
+import {
+  MenuItemsListResponseDto,
+  MenuItemPhotoResponseDto,
+  ModifierGroupResponseDto,
+  ModifierOptionResponseDto,
+} from './dto/menu-response.dto';
 
+@ApiExtraModels(
+  MenuItemPhotoResponseDto,
+  ModifierGroupResponseDto,
+  ModifierOptionResponseDto,
+)
 @ApiTags('Menu Items - Guest')
 @Controller('menu')
 export class GuestMenuController {
@@ -21,7 +37,7 @@ export class GuestMenuController {
   @ApiResponse({
     status: 200,
     description: 'Menu retrieved successfully',
-    type: MenuCategoriesListResponseDto,
+    type: MenuItemsListResponseDto,
   })
   @ApiResponse({
     status: 400,

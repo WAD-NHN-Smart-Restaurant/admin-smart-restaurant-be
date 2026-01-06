@@ -7,9 +7,6 @@ import {
   TablesUpdate,
 } from '../supabase/supabase.types';
 import { mapSqlError } from '../utils/map-sql-error.util';
-import { ModifierGroupStatus } from '../common/database-enums';
-
-const MODIFIER_GROUP_STATUS_ACTIVE: ModifierGroupStatus = 'active';
 
 @Injectable()
 export class ModifierGroupRepository {
@@ -43,7 +40,6 @@ export class ModifierGroupRepository {
         `,
       )
       .eq('restaurant_id', restaurantId)
-      .eq('status', MODIFIER_GROUP_STATUS_ACTIVE)
       .order('display_order', { ascending: true });
 
     if (error) throw mapSqlError(error);
@@ -108,28 +104,6 @@ export class ModifierGroupRepository {
     return data;
   }
 
-  // Validate Option thuộc về Restaurant thông qua Group
-  async validateOptionBelongsToRestaurant(
-    optionId: string,
-    restaurantId: string,
-  ) {
-    // !inner join để lọc chính xác các record khớp điều kiện
-    const { data, error } = await this.supabase
-      .from('modifier_options')
-      .select(
-        `
-        group_id,
-        modifier_groups!inner(restaurant_id)
-      `,
-      )
-      .eq('id', optionId)
-      .eq('modifier_groups.restaurant_id', restaurantId)
-      .single();
-
-    if (error || !data) return false;
-    return true;
-  }
-
   async validateModifierGroupBelongsToRestaurant(
     groupId: string,
     restaurantId: string,
@@ -147,5 +121,17 @@ export class ModifierGroupRepository {
       );
     }
     return true;
+  }
+
+  async softDeleteModifierGroup(id: string, restaurantId: string) {
+    const { data, error } = await this.supabase
+      .from('modifier_groups')
+      .update({ status: 'inactive' })
+      .eq('id', id)
+      .eq('restaurant_id', restaurantId)
+      .select()
+      .single();
+    if (error) throw mapSqlError(error);
+    return data;
   }
 }

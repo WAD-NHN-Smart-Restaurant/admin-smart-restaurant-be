@@ -3,12 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import {
-  CreateCategoryDto,
-  UpdateCategoryDto,
-  CategoryQueryDto,
-  CategoryStatus,
-} from './dto/menu-category.dto';
+import { CategoryQueryDto, CategoryStatus } from './dto/menu-category.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 import { MenuCategoryRepository } from './menu-category.repository';
 
 interface DbError {
@@ -24,6 +21,10 @@ export class MenuCategoryService {
 
   async getCategories(restaurantId: string, query: CategoryQueryDto) {
     return await this.menuCategoryRepository.getCategories(restaurantId, query);
+  }
+
+  async getActiveCategories(restaurantId: string) {
+    return await this.menuCategoryRepository.getActiveCategories(restaurantId);
   }
 
   async createCategory(restaurantId: string, createDto: CreateCategoryDto) {

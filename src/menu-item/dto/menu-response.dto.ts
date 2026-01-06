@@ -79,11 +79,6 @@ export class ModifierGroupResponseDto {
   modifierOptions: ModifierOptionResponseDto[];
 }
 
-export class MenuCategoryNestedResponseDto {
-  @ApiProperty()
-  name: string;
-}
-
 export class MenuItemResponseDto {
   @ApiProperty()
   id: string;
@@ -121,8 +116,8 @@ export class MenuItemResponseDto {
   @ApiProperty()
   updatedAt: string;
 
-  @ApiProperty({ type: MenuCategoryNestedResponseDto })
-  menuCategories: MenuCategoryNestedResponseDto;
+  @ApiProperty()
+  categoryName: string;
 
   @ApiProperty({ type: [MenuItemPhotoResponseDto] })
   menuItemPhotos: MenuItemPhotoResponseDto[];

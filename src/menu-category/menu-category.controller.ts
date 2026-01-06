@@ -13,12 +13,9 @@ import {
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { SupabaseJwtAuthGuard } from '../auth/guards/supabase-jwt-auth.guard';
 import { GetRestaurantId } from '../auth/decorators/get-restaurant-id.decorator';
-import {
-  CreateCategoryDto,
-  UpdateCategoryDto,
-  CategoryQueryDto,
-  CategoryStatus,
-} from './dto/menu-category.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
+import { CategoryQueryDto, CategoryStatus } from './dto/menu-category.dto';
 import {
   ApiTags,
   ApiOperation,
