@@ -3,13 +3,14 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../utils/const';
 import { Database } from '../supabase/supabase.types';
 import { mapSqlError } from '../utils/map-sql-error.util';
+import { UUID } from 'crypto';
 
 export interface SignUpCredentials {
   email: string;
   password: string;
   name: string;
   role?: string;
-  restaurantId?: string;
+  restaurantId?: UUID;
 }
 
 export interface SignInCredentials {

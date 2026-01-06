@@ -7,13 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { UUID } from 'crypto';
 
 export interface SignUpDto {
   email: string;
   password: string;
   name: string;
   role?: string;
-  restaurantId?: string;
+  restaurantId?: UUID;
 }
 
 export interface SignInDto {
@@ -90,6 +91,7 @@ export class AuthService {
   async signUp(dto: SignUpDto) {
     try {
       const result = await this.authRepository.signUp(dto);
+      console.log('Signup Result:', result?.user?.user_metadata);
 
       // Check if email confirmation is required
       const emailConfirmationRequired = !result.user?.email_confirmed_at;
