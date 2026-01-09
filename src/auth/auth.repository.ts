@@ -9,8 +9,7 @@ export interface SignUpCredentials {
   email: string;
   password: string;
   name: string;
-  role?: string;
-  restaurantId?: UUID;
+  role?: Database['public']['Enums']['user_role'];
 }
 
 export interface SignInCredentials {
@@ -33,14 +32,15 @@ export class AuthRepository {
   /**
    * Sign up a new user with email and password
    */
-  async signUp(credentials: SignUpCredentials) {
-    const {
-      email,
-      password,
-      name,
-      role = 'customer',
-      restaurantId,
-    } = credentials;
+  async signUp(restaurantId: string | null, credentials: SignUpCredentials) {
+    const { email, password, name, role = 'customer' } = credentials;
+
+    // Validate that staff roles require restaurantId
+    const staffRoles = ['waiter', 'kitchen_staff'];
+    console.log('Restaurant ID in signUp:', restaurantId);
+    if (staffRoles.includes(role) && !restaurantId) {
+      throw new Error('restaurantId is required for staff roles');
+    }
 
     const { data, error } = await this.supabase.auth.signUp({
       email,
@@ -49,14 +49,26 @@ export class AuthRepository {
         data: {
           name,
           role,
-          restaurant_id: restaurantId,
         },
         //TODO: Replace with actual frontend URL
-        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/callback`,
+        emailRedirectTo: `${process.env.FRONTEND_URL}/callback`,
       },
     });
 
     if (error) throw mapSqlError(error);
+
+    if (data.user) {
+      const { error: profileError } = await this.supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          full_name: name,
+          role,
+          restaurant_id: restaurantId,
+        });
+
+      if (profileError) throw mapSqlError(profileError);
+    }
     return data;
   }
 
@@ -115,22 +127,8 @@ export class AuthRepository {
   /**
    * Refresh session with refresh token
    */
-  async refreshSession(refreshToken: string) {
-    const { data, error } = await this.supabase.auth.refreshSession({
-      refresh_token: refreshToken,
-    });
-    if (error) throw mapSqlError(error);
-    return data;
-  }
-
-  /**
-   * Verify OTP for email confirmation
-   */
-  async verifyOtp(tokenHash: string, type: 'email' | 'signup' | 'magiclink') {
-    const { data, error } = await this.supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type,
-    });
+  async refreshSession() {
+    const { data, error } = await this.supabase.auth.refreshSession();
     if (error) throw mapSqlError(error);
     return data;
   }
@@ -144,7 +142,7 @@ export class AuthRepository {
     const { data, error } = await this.supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${process.env.FRONTEND_URL}/auth/reset-password`,
+        redirectTo: `${process.env.FRONTEND_URL}/reset-password`,
       },
     );
 
@@ -179,6 +177,18 @@ export class AuthRepository {
 
     if (error) throw mapSqlError(error);
     return data.user;
+  }
+
+  /**
+   * Verify OTP for email confirmation
+   */
+  async verifyOtp(tokenHash: string, type: 'email' | 'signup' | 'magiclink') {
+    const { data, error } = await this.supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type,
+    });
+    if (error) throw mapSqlError(error);
+    return data;
   }
 
   /**

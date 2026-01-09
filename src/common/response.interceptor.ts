@@ -40,6 +40,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     return next.handle().pipe(
       map((data) => ({
         success: true,
+        message: 'Request successful',
         data: transformKeysToCamelCase(data),
       })),
     );

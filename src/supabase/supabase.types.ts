@@ -447,6 +447,7 @@ export type Database = {
           full_name: string | null;
           id: string;
           phone_number: string | null;
+          restaurant_id: string | null;
           role: Database['public']['Enums']['user_role'] | null;
           updated_at: string;
         };
@@ -455,6 +456,7 @@ export type Database = {
           full_name?: string | null;
           id: string;
           phone_number?: string | null;
+          restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
           updated_at?: string;
         };
@@ -463,10 +465,19 @@ export type Database = {
           full_name?: string | null;
           id?: string;
           phone_number?: string | null;
+          restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_restaurant_id_fkey';
+            columns: ['restaurant_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       restaurants: {
         Row: {
