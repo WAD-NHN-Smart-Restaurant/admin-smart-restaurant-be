@@ -41,6 +41,7 @@ async function bootstrap() {
       'Authorization',
       'Accept',
       'X-Requested-With',
+      'x-guest-token',
     ],
     credentials: true,
     // preflightContinue: false,
@@ -91,7 +92,8 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3001;
-  await app.listen(port);
+  // Explicitly bind to IPv4 0.0.0.0 to avoid localhost (::1) connectivity issues on Windows
+  await app.listen(port, '0.0.0.0');
 
   console.log(`Application is running on: ${await app.getUrl()}`);
   console.log(`Swagger documentation available at: ${await app.getUrl()}/api`);

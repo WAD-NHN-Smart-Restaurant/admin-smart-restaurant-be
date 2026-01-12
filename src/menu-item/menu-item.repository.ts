@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return */
 import { Injectable, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../utils/const';
@@ -11,6 +12,7 @@ const MENU_MODIFIER_GROUPS_STATUS_ACTIVE: MenuCategoryStatus = 'active';
 const MENU_MODIFIER_OPTIONS_STATUS_ACTIVE: MenuCategoryStatus = 'active';
 const MENU_ITEM_STATUS_AVAILABLE = 'available';
 const MENU_ITEM_STATUS_SOLD_OUT = 'sold_out';
+const MENU_ITEM_STATUS_UNAVAILABLE = 'unavailable';
 
 export type MenuItemFilter = {
   search?: string;
@@ -42,7 +44,7 @@ export class MenuItemRepository {
       chefRecommended?: boolean;
     },
     isGuestQuery: boolean = false,
-  ) {
+  ): any {
     let filteredQuery = query;
 
     if (filters.search) {
@@ -81,41 +83,55 @@ export class MenuItemRepository {
     const sortOrderParam = sortOrder || 'asc';
     const ascending = sortOrderParam === 'asc';
 
-    let sortedItems = [...items];
+    const sortedItems: any[] = [...items];
 
     switch (sortByParam) {
       case 'name':
-        sortedItems.sort((a, b) =>
-          ascending
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name),
-        );
+        sortedItems.sort((a, b) => {
+          const aName = (a as Record<string, any>).name as string;
+          const bName = (b as Record<string, any>).name as string;
+          return ascending
+            ? aName.localeCompare(bName)
+            : bName.localeCompare(aName);
+        });
         break;
 
       case 'price':
-        sortedItems.sort((a, b) =>
-          ascending ? a.price - b.price : b.price - a.price,
-        );
+        sortedItems.sort((a, b) => {
+          const aPrice = (a as Record<string, any>).price as number;
+          const bPrice = (b as Record<string, any>).price as number;
+          return ascending ? aPrice - bPrice : bPrice - aPrice;
+        });
         break;
 
       case 'createdAt':
-        sortedItems.sort((a, b) =>
-          ascending
-            ? new Date(a.created_at).getTime() -
-              new Date(b.created_at).getTime()
-            : new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime(),
-        );
+        sortedItems.sort((a, b) => {
+          const aTime = new Date(
+            (a as Record<string, any>).created_at as string,
+          ).getTime();
+          const bTime = new Date(
+            (b as Record<string, any>).created_at as string,
+          ).getTime();
+          return ascending ? aTime - bTime : bTime - aTime;
+        });
         break;
 
       case 'popularity':
-        sortedItems.sort((a, b) =>
-          ascending ? a.popularity - b.popularity : b.popularity - a.popularity,
-        );
+        sortedItems.sort((a, b) => {
+          const aPopularity = (a as Record<string, any>).popularity as number;
+          const bPopularity = (b as Record<string, any>).popularity as number;
+          return ascending
+            ? aPopularity - bPopularity
+            : bPopularity - aPopularity;
+        });
         break;
 
       default:
-        sortedItems.sort((a, b) => a.name.localeCompare(b.name));
+        sortedItems.sort((a, b) => {
+          const aName = (a as Record<string, any>).name as string;
+          const bName = (b as Record<string, any>).name as string;
+          return aName.localeCompare(bName);
+        });
     }
 
     return sortedItems;
@@ -153,7 +169,8 @@ export class MenuItemRepository {
     restaurantId: string,
   ): Promise<any[]> {
     // Calculate popularity using database function
-    const { data, error } = await (this.supabase as any).rpc(
+    const supabaseAny = this.supabase as Record<string, any>;
+    const { data, error } = await supabaseAny.rpc(
       'calculate_menu_item_popularity',
       {
         restaurant_id_param: restaurantId,
@@ -161,18 +178,24 @@ export class MenuItemRepository {
       },
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     if (error) throw mapSqlError(error);
 
     // Convert array result to map
     const popularityMap: Record<string, number> = {};
-    (data as any)?.forEach((item: any) => {
-      popularityMap[item.menu_item_id] = Number(item.popularity_score);
-    });
+    if (Array.isArray(data)) {
+      data.forEach((item: Record<string, any>) => {
+        const itemId = item.menu_item_id as string;
+        const score = item.popularity_score as number;
+        popularityMap[itemId] = Number(score);
+      });
+    }
 
     // Add popularity scores to items
     return items.map((item) => ({
       ...item,
-      popularity: popularityMap[item.id] || 0,
+      popularity:
+        popularityMap[(item as Record<string, any>).id as string] || 0,
     }));
   }
 
@@ -430,7 +453,11 @@ export class MenuItemRepository {
       )
       .eq('menu_categories.restaurant_id', restaurantId)
       .eq('menu_categories.status', MENU_CATEGORY_STATUS_ACTIVE)
-      .in('status', [MENU_ITEM_STATUS_AVAILABLE, MENU_ITEM_STATUS_SOLD_OUT]);
+      .in('status', [
+        MENU_ITEM_STATUS_AVAILABLE,
+        MENU_ITEM_STATUS_SOLD_OUT,
+        MENU_ITEM_STATUS_UNAVAILABLE,
+      ]);
 
     // Apply filters
     query = this.applyMenuItemFilters(
@@ -477,23 +504,50 @@ export class MenuItemRepository {
       sortOrder,
     );
 
-    // Paginate items
-    const pagination = this.paginateItems(sortedItems, page, limit);
+    // Group items by category
+    const categoryMap = new Map();
+    sortedItems.forEach((item) => {
+      const category = item.menu_categories;
+      if (!category) return;
 
-    // Add category name to each item and flatten the structure
-    const itemsWithCategoryName = pagination.items.map((item) => ({
-      ...item,
-      categoryName: item.menu_categories?.name || null,
-      menu_categories: undefined, // Remove the nested menu_categories object
-    }));
+      if (!categoryMap.has(category.id)) {
+        categoryMap.set(category.id, {
+          id: category.id,
+          name: category.name,
+          status: category.status,
+          createdAt: category.created_at,
+          updatedAt: category.updated_at,
+          description: category.description,
+          displayOrder: category.display_order,
+          restaurantId: category.restaurant_id,
+          menuItems: [],
+        });
+      }
+
+      // Clean up item - remove category nested object and add to category's menuItems
+      const cleanItem = {
+        ...item,
+        menu_categories: undefined,
+      };
+      categoryMap.get(category.id).menuItems.push(cleanItem);
+    });
+
+    // Convert map to array and sort by display order
+    const groupedCategories = Array.from(categoryMap.values()).sort(
+      (a, b) => a.displayOrder - b.displayOrder,
+    );
+
+    // Paginate at category level (for now return all, can adjust if needed)
+    const total = sortedItems.length;
+    const totalPages = Math.ceil(total / limit);
 
     return {
-      items: itemsWithCategoryName,
+      items: groupedCategories,
       pagination: {
-        total: pagination.total,
-        totalPages: pagination.totalPages,
-        page: pagination.page,
-        limit: pagination.limit,
+        total,
+        totalPages,
+        page,
+        limit,
       },
     };
   }
