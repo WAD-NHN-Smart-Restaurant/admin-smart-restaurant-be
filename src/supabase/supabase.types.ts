@@ -362,7 +362,9 @@ export type Database = {
         Row: {
           created_at: string;
           customer_id: string | null;
+          guest_name: string | null;
           id: string;
+          special_request: string | null;
           status: string | null;
           table_id: string | null;
           total_amount: number | null;
@@ -371,7 +373,9 @@ export type Database = {
         Insert: {
           created_at?: string;
           customer_id?: string | null;
+          guest_name?: string | null;
           id?: string;
+          special_request?: string | null;
           status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
@@ -380,7 +384,9 @@ export type Database = {
         Update: {
           created_at?: string;
           customer_id?: string | null;
+          guest_name?: string | null;
           id?: string;
+          special_request?: string | null;
           status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;

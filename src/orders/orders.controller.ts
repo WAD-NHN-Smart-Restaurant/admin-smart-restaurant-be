@@ -10,6 +10,7 @@ import {
   Param,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
+import { OrdersGateway } from './orders.gateway';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Request as ExpressRequest } from 'express';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
@@ -18,7 +19,10 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private ordersService: OrdersService) {}
+  constructor(
+    private ordersService: OrdersService,
+    private ordersGateway: OrdersGateway,
+  ) {}
 
   /**
    * Guest: Create new order or add items to existing order
@@ -82,12 +86,12 @@ export class OrdersController {
   async requestBill(
     @Request()
     req: ExpressRequest & {
-      user: { tableId: string };
+      user: { tableId: string; restaurantId: string };
     },
   ) {
-    const { tableId } = req.user;
+    const { tableId, restaurantId } = req.user;
 
-    const order = await this.ordersService.requestBill(tableId);
+    const order = await this.ordersService.requestBill(tableId, restaurantId);
 
     return {
       status: true,
@@ -102,9 +106,17 @@ export class OrdersController {
    */
   @Post('guest/call-waiter')
   @UseGuards(QrTokenGuard)
-  callWaiter() {
-    // TODO: Implement waiter notification (WebSocket or signal to waiter app)
-    // For now, just return success message
+  callWaiter(
+    @Request()
+    req: ExpressRequest & {
+      user: { tableId: string; restaurantId: string };
+    },
+  ) {
+    const { tableId, restaurantId } = req.user;
+
+    // Emit call waiter notification via WebSocket
+    this.ordersGateway.emitCallWaiter(tableId, restaurantId);
+
     return {
       status: true,
       message: 'Waiter called successfully',

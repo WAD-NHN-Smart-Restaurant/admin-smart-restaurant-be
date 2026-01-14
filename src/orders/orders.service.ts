@@ -3,8 +3,10 @@ import {
   BadRequestException,
   NotFoundException,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { OrdersRepository } from './orders.repository';
+import { OrdersGateway } from './orders.gateway';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../utils/const';
@@ -24,6 +26,8 @@ export class OrdersService {
   constructor(
     private ordersRepository: OrdersRepository,
     @Inject(SUPABASE) private readonly supabase: SupabaseClient<Database>,
+    @Inject(forwardRef(() => OrdersGateway))
+    private readonly ordersGateway: OrdersGateway,
   ) {}
 
   /**
@@ -85,6 +89,19 @@ export class OrdersService {
     const totalAmount = this.calculateOrderTotal(updatedOrder);
     await this.ordersRepository.updateOrderTotal(order.id, totalAmount);
 
+    // Emit new order notification via WebSocket
+    if (restaurantId && tableId) {
+      this.ordersGateway.emitNewOrderNotification(
+        order.id,
+        restaurantId as unknown as string,
+      );
+      this.ordersGateway.emitOrderStatusUpdate(
+        tableId as unknown as string,
+        order.id,
+        order.status || '',
+      );
+    }
+
     return { ...updatedOrder, total_amount: totalAmount };
   }
 
@@ -117,7 +134,7 @@ export class OrdersService {
   /**
    * Request bill (change order status to payment_pending)
    */
-  async requestBill(tableId: string) {
+  async requestBill(tableId: string, restaurantId: string) {
     const order = await this.ordersRepository.getActiveOrderByTable(tableId);
 
     if (!order) {
@@ -125,6 +142,14 @@ export class OrdersService {
     }
 
     const updatedOrder = await this.ordersRepository.updateOrderStatus(
+      order.id,
+      'payment_pending',
+    );
+
+    // Emit bill request notification
+    this.ordersGateway.emitBillRequest(tableId, order.id, restaurantId);
+    this.ordersGateway.emitOrderStatusUpdate(
+      tableId,
       order.id,
       'payment_pending',
     );
@@ -175,18 +200,33 @@ export class OrdersService {
   /**
    * Update order status (admin/kitchen)
    */
-  async updateOrderStatus(orderId: string, status: string) {
+  async updateOrderStatus(orderId: string, status: string, tableId?: string) {
     const validStatuses = [
-      'active',
-      'payment_pending',
+      'pending',
+      'accepted',
+      'rejected',
+      'preparing',
+      'ready',
+      'served',
       'completed',
       'cancelled',
+      'payment_pending',
     ];
 
     if (!validStatuses.includes(status)) {
       throw new BadRequestException(`Invalid order status: ${status}`);
     }
 
-    return this.ordersRepository.updateOrderStatus(orderId, status);
+    const updatedOrder = await this.ordersRepository.updateOrderStatus(
+      orderId,
+      status,
+    );
+
+    // Emit status update via WebSocket if tableId provided
+    if (tableId) {
+      this.ordersGateway.emitOrderStatusUpdate(tableId, orderId, status);
+    }
+
+    return updatedOrder;
   }
 }
