@@ -42,6 +42,11 @@ export class AuthRepository {
       throw new Error('restaurantId is required for staff roles');
     }
 
+    const frontendUrl =
+      role === 'customer'
+        ? process.env.GUEST_CUSTOMER_FRONTEND_URL
+        : process.env.ADMIN_FRONTEND_URL;
+
     const { data, error } = await this.supabase.auth.signUp({
       email,
       password,
@@ -51,7 +56,7 @@ export class AuthRepository {
           role,
         },
         //TODO: Replace with actual frontend URL
-        emailRedirectTo: `${process.env.FRONTEND_URL}/callback`,
+        emailRedirectTo: `${frontendUrl}/callback`,
       },
     });
 
@@ -139,10 +144,90 @@ export class AuthRepository {
   async resetPasswordForEmail(credentials: ResetPasswordCredentials) {
     const { email } = credentials;
 
+    let role: Database['public']['Enums']['user_role'] = 'customer';
+    let authUser: any = null;
+
+    // Try to find user by email with pagination
+    let page = 1;
+    const perPage = 1000;
+    let foundUser = false;
+
+    while (!foundUser) {
+      const { data: authData, error: listError } =
+        await this.supabase.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+
+      console.log(`Auth data retrieved for reset password (page ${page}):`, {
+        userCount: authData?.users?.length || 0,
+        total: authData?.users?.length || 0,
+      });
+
+      if (listError) {
+        console.error('Error listing users:', listError);
+        break;
+      }
+
+      if (!authData?.users || authData.users.length === 0) {
+        console.log('No more users to check');
+        break;
+      }
+
+      authUser = authData.users.find((user: any) => user.email === email);
+
+      if (authUser) {
+        console.log('Auth user found for email:', email);
+        foundUser = true;
+        break;
+      }
+
+      // If we got fewer results than perPage, we've reached the end
+      if (authData.users.length < perPage) {
+        console.log('Reached end of user list without finding user');
+        break;
+      }
+
+      page++;
+    }
+
+    if (authUser) {
+      // Try to get role from profiles table
+      const { data: profile } = await this.supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authUser.id)
+        .single();
+
+      console.log('Profile data for user:', profile);
+
+      if (profile && profile.role) {
+        role = profile.role;
+        console.log('Role found in profiles table:', profile.role);
+      } else if (authUser.user_metadata?.role) {
+        // Fallback to user metadata
+        role = authUser.user_metadata
+          .role as Database['public']['Enums']['user_role'];
+        console.log('Role found in user metadata:', role);
+      } else {
+        console.log('No role found, defaulting to customer');
+      }
+    } else {
+      console.log('User not found in auth system, defaulting to customer role');
+    }
+
+    const frontendUrl =
+      role === 'customer'
+        ? process.env.GUEST_CUSTOMER_FRONTEND_URL
+        : process.env.ADMIN_FRONTEND_URL;
+
+    console.log('Role determined for reset email:', role);
+    console.log('Frontend URL for reset email:', frontendUrl);
+
     const { data, error } = await this.supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${process.env.FRONTEND_URL}/reset-password`,
+        redirectTo: `${frontendUrl}/reset-password`,
       },
     );
 
