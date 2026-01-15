@@ -50,7 +50,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     return next.handle().pipe(
       map((data: T) => ({
         success: true,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        message: 'Request successful',
         data: transformKeysToCamelCase(data),
       })),
     );

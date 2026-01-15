@@ -8,13 +8,19 @@ import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { UUID } from 'crypto';
+import { Database } from 'src/supabase/supabase.types';
 
 export interface SignUpDto {
   email: string;
   password: string;
   name: string;
-  role?: string;
-  restaurantId?: UUID;
+  role?: Database['public']['Enums']['user_role'];
+}
+
+export interface CustomerSignUpDto {
+  email: string;
+  password: string;
+  name: string;
 }
 
 export interface SignInDto {
@@ -84,14 +90,16 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
     }
-  } /**
+  }
+
+  /**
    * Register a new user
    * Returns user data with accessToken and tokens separately (tokens for HttpOnly cookies)
    */
-  async signUp(dto: SignUpDto) {
+  async signUp(restaurantId: string | null, dto: SignUpDto) {
     try {
-      const result = await this.authRepository.signUp(dto);
-      console.log('Signup Result:', result?.user?.user_metadata);
+      console.log('Restaurant ID in AuthService signUp:', restaurantId);
+      const result = await this.authRepository.signUp(restaurantId, dto);
 
       // Check if email confirmation is required
       const emailConfirmationRequired = !result.user?.email_confirmed_at;
@@ -127,7 +135,9 @@ export class AuthService {
       }
       throw new BadRequestException(error.message || 'Registration failed');
     }
-  } /**
+  }
+
+  /**
    * Sign in with email and password
    * Returns user data with accessToken and tokens separately (tokens for HttpOnly cookies)
    */
@@ -190,9 +200,9 @@ export class AuthService {
   /**
    * Refresh access token
    */
-  async refreshToken(dto: RefreshTokenDto) {
+  async refreshToken() {
     try {
-      const result = await this.authRepository.refreshSession(dto.refreshToken);
+      const result = await this.authRepository.refreshSession();
 
       if (!result.session) {
         throw new UnauthorizedException('Invalid refresh token');
@@ -237,7 +247,9 @@ export class AuthService {
     } catch (error: any) {
       throw new UnauthorizedException('Invalid or expired token');
     }
-  } /**
+  }
+
+  /**
    * Confirm email with OTP token
    */
   async confirmEmail(dto: ConfirmEmailDto) {

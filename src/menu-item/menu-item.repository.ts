@@ -83,7 +83,7 @@ export class MenuItemRepository {
     const sortOrderParam = sortOrder || 'asc';
     const ascending = sortOrderParam === 'asc';
 
-    const sortedItems: any[] = [...items];
+    const sortedItems = [...items];
 
     switch (sortByParam) {
       case 'name':

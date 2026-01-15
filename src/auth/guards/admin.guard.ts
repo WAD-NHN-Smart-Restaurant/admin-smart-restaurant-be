@@ -6,7 +6,6 @@ export class AdminGuard extends RolesGuard {
   canActivate(context: ExecutionContext): boolean {
     // For admin routes, we require the 'admin' role
     const requiredRoles = ['admin'];
-    const reflector = (this as any).reflector;
 
     const { user } = context.switchToHttp().getRequest();
 

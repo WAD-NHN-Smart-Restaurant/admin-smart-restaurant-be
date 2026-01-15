@@ -7,9 +7,13 @@ import {
   RequestInterceptor,
 } from './common/response.interceptor';
 import { GlobalExceptionFilter } from './common/global-exception.filter';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Enable cookie parsing
+  app.use(cookieParser());
 
   // Enable global request and response interceptors
   app.useGlobalInterceptors(

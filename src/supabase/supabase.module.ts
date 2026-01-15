@@ -12,7 +12,7 @@ import { ConfigService } from '@nestjs/config';
       useFactory: (config: ConfigService) =>
         createClient<Database>(
           config.get<string>('SUPABASE_URL')!,
-          config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
+          config.get<string>('SUPABASE_SECRET_KEY')!,
         ),
     },
   ],
