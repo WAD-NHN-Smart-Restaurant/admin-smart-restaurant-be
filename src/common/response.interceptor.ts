@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import {
@@ -20,8 +21,17 @@ export interface ApiResponse<T> {
 @Injectable()
 export class RequestInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
-    if (request.body && typeof request.body === 'object') {
+    const request = context.switchToHttp().getRequest<Request>();
+
+    // Skip transformation for guest order endpoints (already in camelCase from frontend)
+    const isGuestOrderEndpoint = request.url?.includes('/orders/guest');
+
+    if (
+      !isGuestOrderEndpoint &&
+      request.body &&
+      typeof request.body === 'object'
+    ) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       request.body = transformKeysToSnakeCase(request.body);
     }
     return next.handle();
@@ -38,7 +48,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     next: CallHandler,
   ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
-      map((data) => ({
+      map((data: T) => ({
         success: true,
         message: 'Request successful',
         data: transformKeysToCamelCase(data),

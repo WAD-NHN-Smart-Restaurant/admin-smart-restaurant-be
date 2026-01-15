@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TablesController } from './tables.controller';
+import { GuestTablesController } from './guest-tables.controller';
 import { TablesService } from './tables.service';
 import { TablesRepository } from './tables.repository';
 import { SupabaseModule } from '../supabase/supabase.module';
@@ -8,7 +9,7 @@ import { QrTokenGuard } from './guards/qr-token.guard';
 
 @Module({
   imports: [SupabaseModule, AuthModule],
-  controllers: [TablesController],
+  controllers: [TablesController, GuestTablesController],
   providers: [TablesService, TablesRepository, QrTokenGuard],
   exports: [TablesService, TablesRepository, QrTokenGuard],
 })

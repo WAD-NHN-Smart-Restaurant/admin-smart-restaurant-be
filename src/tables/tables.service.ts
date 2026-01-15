@@ -14,7 +14,6 @@ import * as QRCode from 'qrcode';
 import PDFDocument from 'pdfkit';
 import archiver from 'archiver';
 import { PassThrough } from 'stream';
-import { TableDto } from './dto/table.dto';
 
 type TableRow = Database['public']['Tables']['tables']['Row'];
 type TableInsert = Database['public']['Tables']['tables']['Insert'];
@@ -50,7 +49,9 @@ export class TablesService {
     try {
       return await this.tablesRepository.create(tableData);
     } catch (error) {
-      throw new BadRequestException(`Failed to create table: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to create table: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -66,17 +67,17 @@ export class TablesService {
       });
       // Compute qrUrl for each table only if qr_token exists
 
-      const result = await Promise.all(
-        tables.map(async (table) => {
-          return {
-            ...table,
-            qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${table.id}&token=${table.qr_token}`)}&size=200x200`,
-          };
-        }),
-      );
+      const result = tables.map((table) => {
+        return {
+          ...table,
+          qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${table.id}&tableNumber=${table.table_number}&token=${table.qr_token}`)}&size=200x200`,
+        };
+      });
       return result;
     } catch (error) {
-      throw new BadRequestException(`Failed to fetch tables: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to fetch tables: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -112,7 +113,9 @@ export class TablesService {
     try {
       return await this.tablesRepository.update(id, updateTableDto);
     } catch (error) {
-      throw new BadRequestException(`Failed to update table: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to update table: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -136,7 +139,7 @@ export class TablesService {
       return await this.tablesRepository.updateStatus(id, status);
     } catch (error) {
       throw new BadRequestException(
-        `Failed to update table status: ${error.message}`,
+        `Failed to update table status: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -163,7 +166,7 @@ export class TablesService {
       };
     } catch (error) {
       throw new BadRequestException(
-        `Failed to fetch order status: ${error.message}`,
+        `Failed to fetch order status: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -176,7 +179,7 @@ export class TablesService {
       return await this.tablesRepository.getUniqueLocations();
     } catch (error) {
       throw new BadRequestException(
-        `Failed to fetch locations: ${error.message}`,
+        `Failed to fetch locations: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -199,14 +202,23 @@ export class TablesService {
     // Use restaurant_id from the table instead of env
     const restaurantId = table.restaurant_id;
 
-    const payload = {
+    const payload: {
+      tableId: string;
+      tableNumber: number | string;
+      restaurantId: string;
+      createdAt: string;
+    } = {
       tableId: id,
+      tableNumber: table.table_number,
       restaurantId,
       createdAt: new Date().toISOString(),
-    } as any;
+    };
 
     const signOptions: jwt.SignOptions = {};
-    if (options?.expiresIn) signOptions.expiresIn = options.expiresIn as any;
+    if (options?.expiresIn) {
+      // @ts-expect-error - jwt accepts string | number but type definition may be stricter
+      signOptions.expiresIn = options.expiresIn;
+    }
     const token = jwt.sign(payload, secret, signOptions);
 
     // Persist token and timestamp
@@ -216,7 +228,7 @@ export class TablesService {
       new Date().toISOString(),
     );
     return {
-      qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${table.id}&token=${token}`)}&size=200x200`,
+      qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${table.id}&tableNumber=${table.table_number}&token=${token}`)}&size=200x200`,
     };
   }
 
@@ -226,7 +238,7 @@ export class TablesService {
   async getQrBufferFromToken(id: string): Promise<Buffer | null> {
     const table = await this.findOne(id);
     if (!table.qr_token) return null;
-    const qrEmbededUrl = `${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${id}&token=${table.qr_token}`;
+    const qrEmbededUrl = `${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${id}&tableNumber=${table.table_number}&token=${table.qr_token}`;
 
     return await QRCode.toBuffer(qrEmbededUrl, {
       type: 'png',
@@ -266,7 +278,7 @@ export class TablesService {
 
         doc.end();
       } catch (err) {
-        reject(err);
+        reject(err instanceof Error ? err : new Error(String(err)));
       }
     });
   }
@@ -314,10 +326,10 @@ export class TablesService {
     expiresIn?: string | number;
     rotate?: boolean;
   }) {
-    const tables = await this.findAll({} as any);
+    const tables = await this.findAll({} as QueryTablesDto);
 
     for (const t of tables) {
-      const res = await this.generateQRCode(t.id, {
+      await this.generateQRCode(t.id, {
         expiresIn: options?.expiresIn,
       });
     }
@@ -329,7 +341,7 @@ export class TablesService {
   async getAllQrCodesArchive(
     format: 'png' | 'pdf' = 'png',
   ): Promise<{ filename: string; stream: PassThrough; contentType: string }> {
-    const tables = await this.findAll({} as any);
+    const tables = await this.findAll({} as QueryTablesDto);
     const archiveStream = new PassThrough();
     let filename = '';
     let contentType = '';
@@ -371,7 +383,7 @@ export class TablesService {
           name: `table-${table.table_number}-qr.png`,
         });
       }
-      archive.finalize();
+      await archive.finalize();
       filename = 'all-tables-qr.zip';
       contentType = 'application/zip';
     }
@@ -381,14 +393,27 @@ export class TablesService {
   /**
    * Verify a QR JWT token and return decoded payload or throw
    */
-  verifyQrToken(token: string) {
+  verifyQrToken(token: string): {
+    tableId: string;
+    tableNumber: number | string;
+    restaurantId: string;
+    createdAt: string;
+  } {
     const secret = process.env.QR_JWT_SECRET;
     try {
       if (secret) {
         const decoded = jwt.verify(token, secret);
-        return decoded as any;
+        return decoded as {
+          tableId: string;
+          tableNumber: number | string;
+          restaurantId: string;
+          createdAt: string;
+        };
       } else {
         console.error('QR JWT secret not configured');
+        throw new BadRequestException(
+          'This QR code is no longer valid. Please ask staff for assistance.',
+        );
       }
     } catch (err) {
       console.log('QR token verification failed:', err);
@@ -419,7 +444,8 @@ export class TablesService {
   /**
    * Invalidate a QR token (for logging, not implemented in DB here)
    */
-  async invalidateQrToken(token: string) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  invalidateQrToken(token: string) {
     // In a real system, store invalidated tokens in DB or cache
     // For demo, just throw error on verify
     return true;
