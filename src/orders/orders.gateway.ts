@@ -13,7 +13,7 @@ import { Logger } from '@nestjs/common';
 @WebSocketGateway({
   namespace: '/orders',
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3002',
+    origin: process.env.GUEST_CUSTOMER_FRONTEND_URL || 'http://localhost:3002',
     credentials: true,
   },
 })

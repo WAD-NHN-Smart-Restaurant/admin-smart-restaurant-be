@@ -55,7 +55,7 @@ export class HealthController {
         environment: {
           nodeEnv: process.env.NODE_ENV,
           supabaseUrl: process.env.SUPABASE_URL,
-          hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+          hasServiceRoleKey: !!process.env.SUPABASE_SECRET_KEY,
         },
       };
     } catch (error) {
@@ -67,7 +67,7 @@ export class HealthController {
         environment: {
           nodeEnv: process.env.NODE_ENV,
           supabaseUrl: process.env.SUPABASE_URL,
-          hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+          hasServiceRoleKey: !!process.env.SUPABASE_SECRET_KEY,
         },
       };
     }
