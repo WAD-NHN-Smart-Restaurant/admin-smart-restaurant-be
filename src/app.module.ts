@@ -8,6 +8,8 @@ import { StorageModule } from './storage/storage.module';
 import { MenuCategoryModule } from './menu-category/menu-category.module';
 import { ModifierGroupModule } from './modifier-group/modifier-group.module';
 import { ModifierOptionModule } from './modifier-option/modifier-option.module';
+import { WaiterModule } from './waiter/waiter.module';
+import { BillsModule } from './bills/bills.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { ModifierOptionModule } from './modifier-option/modifier-option.module';
     MenuCategoryModule,
     ModifierGroupModule,
     ModifierOptionModule,
+    WaiterModule,
+    BillsModule,
   ],
 })
 export class AppModule {}
