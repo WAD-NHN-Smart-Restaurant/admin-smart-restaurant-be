@@ -6,7 +6,9 @@ import {
   UseGuards,
   Headers,
   UnauthorizedException,
+  BadRequestException,
   Res,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -28,8 +30,11 @@ import type {
   ConfirmEmailDto,
   ResetPasswordDto,
   UpdatePasswordDto,
+  CustomerSignUpDto,
 } from './auth.service';
 import { SupabaseJwtAuthGuard } from './guards/supabase-jwt-auth.guard';
+import { AdminGuard } from './guards/admin.guard';
+import { GetRestaurantId } from './decorators/get-restaurant-id.decorator';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -41,8 +46,11 @@ export class AuthController {
    * Register a new user
    * POST /auth/register
    */
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
+  @UseGuards(SupabaseJwtAuthGuard, AdminGuard)
+  @Post('admin/register-staff')
+  @ApiOperation({
+    summary: 'Register a new staff member (waiter or kitchen_staff)',
+  })
   @ApiResponse({ status: 201, description: 'User successfully registered' })
   @ApiResponse({ status: 400, description: 'Bad request - validation error' })
   @ApiResponse({ status: 409, description: 'Email already registered' })
@@ -55,13 +63,8 @@ export class AuthController {
         name: { type: 'string', example: 'John Doe' },
         role: {
           type: 'string',
-          example: 'customer',
-          enum: ['customer', 'staff', 'admin'],
-        },
-        restaurantId: {
-          type: 'string',
-          example: 'restaurant-uuid',
-          description: 'Restaurant ID for multi-tenant setup',
+          example: 'waiter',
+          enum: ['waiter', 'kitchen_staff'],
         },
       },
       required: ['email', 'password', 'name'],
@@ -70,8 +73,65 @@ export class AuthController {
   async register(
     @Body() dto: SignUpDto,
     @Res({ passthrough: true }) res: Response,
+    @GetRestaurantId() restaurantId: string,
   ) {
-    const result = await this.authService.signUp(dto);
+    if (!dto.role || !['waiter', 'kitchen_staff'].includes(dto.role)) {
+      throw new BadRequestException(
+        'Admins can only create accounts for waiter or kitchen_staff roles',
+      );
+    }
+
+    console.log('restaurant id:', restaurantId);
+    const result = await this.authService.signUp(restaurantId, dto);
+    //const result = await this.authService.signUp('c6fc043d-0b6f-4bf0-bb73-a8fc93b28106',dto);
+
+    // Set tokens in HttpOnly secure cookies if session exists
+    if (result.tokens) {
+      res.cookie('access_token', result.tokens.accessToken, {
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 60 * 60 * 1000, // 1 hour
+        path: '/',
+      });
+
+      res.cookie('refresh_token', result.tokens.refreshToken, {
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/',
+      });
+    }
+
+    return result.data;
+  }
+
+  /**
+   * Register a new customer
+   * POST /auth/register
+   */
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new customer' })
+  @ApiResponse({ status: 201, description: 'Customer successfully registered' })
+  @ApiResponse({ status: 400, description: 'Bad request - validation error' })
+  @ApiResponse({ status: 409, description: 'Email already registered' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', example: 'customer@example.com' },
+        password: { type: 'string', example: 'password123' },
+        name: { type: 'string', example: 'John Doe' },
+      },
+      required: ['email', 'password', 'name'],
+    },
+  })
+  async registerCustomer(
+    @Body() dto: CustomerSignUpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // Force role to 'customer' internally
+    const customerDto: SignUpDto = { ...dto, role: 'customer' };
+    const result = await this.authService.signUp(null, customerDto);
 
     // Set tokens in HttpOnly secure cookies if session exists
     if (result.tokens) {
@@ -93,6 +153,7 @@ export class AuthController {
     // Return only user data, not tokens
     return result.data;
   }
+
   /**
    * Login with email and password
    * POST /auth/login
@@ -165,17 +226,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
   @ApiResponse({ status: 401, description: 'Invalid refresh token' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        refreshToken: { type: 'string', example: 'your-refresh-token' },
-      },
-      required: ['refreshToken'],
-    },
-  })
-  async refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto);
+  async refresh() {
+    return this.authService.refreshToken();
   }
 
   /**
@@ -205,52 +257,51 @@ export class AuthController {
    * Confirm email with OTP
    * POST /auth/confirm
    */
-  @Post('confirm')
-  @ApiOperation({ summary: 'Confirm email with OTP token' })
-  @ApiResponse({ status: 200, description: 'Email confirmed successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        tokenHash: { type: 'string', example: 'your-token-hash' },
-        type: {
-          type: 'string',
-          example: 'email',
-          enum: ['email', 'signup', 'magiclink'],
-        },
-      },
-      required: ['tokenHash', 'type'],
-    },
-  })
-  async confirmEmail(
-    @Body() dto: ConfirmEmailDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const result = await this.authService.confirmEmail(dto);
+  // @Post('confirm')
+  // @ApiOperation({ summary: 'Confirm email with OTP token' })
+  // @ApiResponse({ status: 200, description: 'Email confirmed successfully' })
+  // @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  // @ApiBody({
+  //   schema: {
+  //     type: 'object',
+  //     properties: {
+  //       tokenHash: { type: 'string', example: 'your-token-hash' },
+  //       type: {
+  //         type: 'string',
+  //         example: 'email',
+  //         enum: ['email', 'signup', 'magiclink'],
+  //       },
+  //     },
+  //     required: ['tokenHash', 'type'],
+  //   },
+  // })
+  // async confirmEmail(
+  //   @Body() dto: ConfirmEmailDto,
+  //   @Res({ passthrough: true }) res: Response,
+  // ) {
+  //   const result = await this.authService.confirmEmail(dto);
 
-    // Set tokens in HttpOnly secure cookies if session exists
-    if (result.tokens) {
-      res.cookie('access_token', result.tokens.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
-        maxAge: 60 * 60 * 1000, // 1 hour
-        path: '/',
-      });
+  //   // Set tokens in HttpOnly secure cookies if session exists
+  //   if (result.tokens) {
+  //     res.cookie('access_token', result.tokens.accessToken, {
+  //       httpOnly: true,
+  //       secure: process.env.NODE_ENV === 'production',
+  //       sameSite: 'none',
+  //       maxAge: 60 * 60 * 1000, // 1 hour
+  //       path: '/',
+  //     });
 
-      res.cookie('refresh_token', result.tokens.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        path: '/',
-      });
-    }
+  //     res.cookie('refresh_token', result.tokens.refreshToken, {
+  //       httpOnly: true,
+  //       secure: process.env.NODE_ENV === 'production',
+  //       sameSite: 'none',
+  //       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  //       path: '/',
+  //     });
+  //   }
 
-    // Return only user data, not tokens
-    return result.data;
-  }
+  //   return result.data;
+  // }
 
   /**
    * Send password reset email
@@ -323,16 +374,6 @@ export class AuthController {
     return this.authService.resendConfirmation(email);
   }
 
-  // Public endpoint - no authentication required
-  @Get('public')
-  @ApiOperation({ summary: 'Get public data (no auth required)' })
-  @ApiResponse({ status: 200, description: 'Public data retrieved' })
-  getPublicData() {
-    return {
-      message: 'This is public data, no authentication required',
-    };
-  }
-
   // Protected endpoint - requires valid JWT (using new guard)
   @Get('profile')
   @UseGuards(SupabaseJwtAuthGuard)
@@ -362,25 +403,6 @@ export class AuthController {
   getAdminData(@CurrentUser() user: AuthenticatedUser) {
     return {
       message: 'This is admin-only data',
-      user,
-    };
-  }
-
-  // Multiple roles allowed (using new guard)
-  @Get('staff')
-  @UseGuards(SupabaseJwtAuthGuard, RolesGuard)
-  @Roles('admin', 'staff')
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Get staff data (admin or staff only)' })
-  @ApiResponse({ status: 200, description: 'Staff data retrieved' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden - Insufficient permissions',
-  })
-  getStaffData(@CurrentUser() user: AuthenticatedUser) {
-    return {
-      message: 'This is staff data (admin or staff role)',
       user,
     };
   }

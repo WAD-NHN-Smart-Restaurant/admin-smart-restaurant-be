@@ -10,6 +10,9 @@ import { ModifierGroupModule } from './modifier-group/modifier-group.module';
 import { ModifierOptionModule } from './modifier-option/modifier-option.module';
 import { WaiterModule } from './waiter/waiter.module';
 import { BillsModule } from './bills/bills.module';
+import { OrdersModule } from './orders/orders.module';
+import { HealthController } from './common/health.controller';
+import { ProfilesModule } from './profiles/profiles.module';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import { BillsModule } from './bills/bills.module';
     ModifierOptionModule,
     WaiterModule,
     BillsModule,
+    OrdersModule,
+    ProfilesModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
