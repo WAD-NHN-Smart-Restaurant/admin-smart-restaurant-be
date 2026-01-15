@@ -70,7 +70,7 @@ export class TablesService {
         tables.map(async (table) => {
           return {
             ...table,
-            qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.FRONTEND_URL}/menu?table=${table.id}&token=${table.qr_token}`)}&size=200x200`,
+            qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${table.id}&token=${table.qr_token}`)}&size=200x200`,
           };
         }),
       );
@@ -216,7 +216,7 @@ export class TablesService {
       new Date().toISOString(),
     );
     return {
-      qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.FRONTEND_URL}/menu?table=${table.id}&token=${token}`)}&size=200x200`,
+      qrUrl: `${qrCodeGenerater}?data=${encodeURIComponent(`${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${table.id}&token=${token}`)}&size=200x200`,
     };
   }
 
@@ -226,7 +226,7 @@ export class TablesService {
   async getQrBufferFromToken(id: string): Promise<Buffer | null> {
     const table = await this.findOne(id);
     if (!table.qr_token) return null;
-    const qrEmbededUrl = `${process.env.FRONTEND_URL}/menu?table=${id}&token=${table.qr_token}`;
+    const qrEmbededUrl = `${process.env.GUEST_CUSTOMER_FRONTEND_URL}/menu?table=${id}&token=${table.qr_token}`;
 
     return await QRCode.toBuffer(qrEmbededUrl, {
       type: 'png',

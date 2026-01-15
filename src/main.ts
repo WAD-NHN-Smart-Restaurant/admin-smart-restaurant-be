@@ -7,9 +7,13 @@ import {
   RequestInterceptor,
 } from './common/response.interceptor';
 import { GlobalExceptionFilter } from './common/global-exception.filter';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Enable cookie parsing
+  app.use(cookieParser());
 
   // Enable global request and response interceptors
   app.useGlobalInterceptors(
@@ -58,6 +62,16 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('Auth', 'Authentication endpoints')
     .addTag('Tables', 'Table management endpoints')
+    .addTag('Menu Items - Admin', 'Admin menu item management endpoints')
+    .addTag('Menu Items - Guest', 'Guest menu item access endpoints')
+    .addTag(
+      'Menu Categories - Admin',
+      'Admin menu category management endpoints',
+    )
+    .addTag(
+      'Modifier Groups - Admin',
+      'Admin modifier group management endpoints',
+    )
     .addBearerAuth(
       {
         type: 'http',

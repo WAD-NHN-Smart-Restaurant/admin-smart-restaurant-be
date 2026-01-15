@@ -127,7 +127,6 @@ export type Database = {
           description: string | null;
           id: string;
           is_chef_recommended: boolean | null;
-          is_deleted: boolean | null;
           name: string;
           prep_time_minutes: number | null;
           price: number;
@@ -141,7 +140,6 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
-          is_deleted?: boolean | null;
           name: string;
           prep_time_minutes?: number | null;
           price: number;
@@ -155,7 +153,6 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
-          is_deleted?: boolean | null;
           name?: string;
           prep_time_minutes?: number | null;
           price?: number;
@@ -308,10 +305,11 @@ export type Database = {
         Row: {
           created_at: string;
           id: string;
+          menu_item_id: string;
           notes: string | null;
           order_id: string;
-          product_id: string;
           quantity: number;
+          status: Database['public']['Enums']['order_item_status'];
           total_price: number;
           unit_price: number;
           updated_at: string;
@@ -319,10 +317,11 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
+          menu_item_id: string;
           notes?: string | null;
           order_id: string;
-          product_id: string;
           quantity?: number;
+          status?: Database['public']['Enums']['order_item_status'];
           total_price: number;
           unit_price: number;
           updated_at?: string;
@@ -330,27 +329,28 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: string;
+          menu_item_id?: string;
           notes?: string | null;
           order_id?: string;
-          product_id?: string;
           quantity?: number;
+          status?: Database['public']['Enums']['order_item_status'];
           total_price?: number;
           unit_price?: number;
           updated_at?: string;
         };
         Relationships: [
           {
+            foreignKeyName: 'order_items_menu_item_id_fkey';
+            columns: ['menu_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_items';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'order_items_order_id_fkey';
             columns: ['order_id'];
             isOneToOne: false;
             referencedRelation: 'orders';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'order_items_product_id_fkey';
-            columns: ['product_id'];
-            isOneToOne: false;
-            referencedRelation: 'menu_items';
             referencedColumns: ['id'];
           },
         ];
@@ -359,7 +359,9 @@ export type Database = {
         Row: {
           created_at: string;
           customer_id: string | null;
+          guest_name: string | null;
           id: string;
+          special_request: string | null;
           status: string | null;
           table_id: string | null;
           total_amount: number | null;
@@ -368,7 +370,9 @@ export type Database = {
         Insert: {
           created_at?: string;
           customer_id?: string | null;
+          guest_name?: string | null;
           id?: string;
+          special_request?: string | null;
           status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
@@ -377,7 +381,9 @@ export type Database = {
         Update: {
           created_at?: string;
           customer_id?: string | null;
+          guest_name?: string | null;
           id?: string;
+          special_request?: string | null;
           status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
@@ -440,30 +446,47 @@ export type Database = {
       };
       profiles: {
         Row: {
+          avatar_url: string | null;
           created_at: string;
           full_name: string | null;
           id: string;
           phone_number: string | null;
+          restaurant_id: string | null;
           role: Database['public']['Enums']['user_role'] | null;
+          storage_key: string | null;
           updated_at: string;
         };
         Insert: {
+          avatar_url?: string | null;
           created_at?: string;
           full_name?: string | null;
           id: string;
           phone_number?: string | null;
+          restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
+          storage_key?: string | null;
           updated_at?: string;
         };
         Update: {
+          avatar_url?: string | null;
           created_at?: string;
           full_name?: string | null;
           id?: string;
           phone_number?: string | null;
+          restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
+          storage_key?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_restaurant_id_fkey';
+            columns: ['restaurant_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       restaurants: {
         Row: {
@@ -541,7 +564,13 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      calculate_menu_item_popularity: {
+        Args: { days_back?: number; restaurant_id_param: string };
+        Returns: {
+          menu_item_id: string;
+          popularity_score: number;
+        }[];
+      };
     };
     Enums: {
       order_item_status:

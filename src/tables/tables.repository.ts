@@ -8,6 +8,11 @@ type TableRow = Database['public']['Tables']['tables']['Row'];
 type TableInsert = Database['public']['Tables']['tables']['Insert'];
 type TableUpdate = Database['public']['Tables']['tables']['Update'];
 
+// Use Database enum types for order statuses
+type OrderStatus = Database['public']['Enums']['order_status'];
+const ORDER_STATUS_ACTIVE: OrderStatus = 'active';
+const ORDER_STATUS_PAYMENT_PENDING: OrderStatus = 'payment_pending';
+
 @Injectable()
 export class TablesRepository {
   constructor(
@@ -98,10 +103,25 @@ export class TablesRepository {
       query = query.eq('location', filters.location);
     }
 
-    // Apply sorting
+    // Apply sorting - map camelCase to snake_case for database columns
     const sortBy = filters.sortBy || 'created_at';
+    let dbSortBy = sortBy;
+
+    // Map camelCase field names to database column names
+    switch (sortBy) {
+      case 'tableNumber':
+        dbSortBy = 'table_number';
+        break;
+      case 'createdAt':
+        dbSortBy = 'created_at';
+        break;
+      // 'capacity' is already correct
+      default:
+        dbSortBy = sortBy;
+    }
+
     const sortOrder = filters.sortOrder || 'asc';
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+    query = query.order(dbSortBy, { ascending: sortOrder === 'asc' });
 
     const { data, error } = await query;
 
@@ -162,7 +182,7 @@ export class TablesRepository {
       .from('orders')
       .select('id', { count: 'exact', head: true })
       .eq('table_id', tableId)
-      .in('status', ['active', 'payment_pending']);
+      .in('status', [ORDER_STATUS_ACTIVE, ORDER_STATUS_PAYMENT_PENDING]);
 
     if (error) {
       throw mapSqlError(error);

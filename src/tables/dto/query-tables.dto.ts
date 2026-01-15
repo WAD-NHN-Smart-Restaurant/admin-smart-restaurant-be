@@ -26,15 +26,15 @@ export class QueryTablesDto {
 
   @ApiProperty({
     description: 'Field to sort by',
-    enum: ['table_number', 'capacity', 'created_at'],
+    enum: ['tableNumber', 'capacity', 'createdAt'],
     required: false,
-    example: 'table_number',
+    example: 'tableNumber',
   })
   @IsOptional()
-  @IsEnum(['table_number', 'capacity', 'created_at'], {
-    message: 'Sort by must be table_number, capacity, or created_at',
+  @IsEnum(['tableNumber', 'capacity', 'createdAt'], {
+    message: 'Sort by must be tableNumber, capacity, or createdAt',
   })
-  sortBy?: 'table_number' | 'capacity' | 'created_at';
+  sortBy?: 'tableNumber' | 'capacity' | 'createdAt';
 
   @ApiProperty({
     description: 'Sort order',

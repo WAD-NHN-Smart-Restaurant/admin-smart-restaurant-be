@@ -81,7 +81,7 @@ export class TablesController {
   @ApiQuery({
     name: 'sortBy',
     required: false,
-    enum: ['table_number', 'capacity', 'created_at'],
+    enum: ['tableNumber', 'capacity', 'createdAt'],
   })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'] })
   @ApiResponse({ status: 200, description: 'Tables retrieved successfully' })

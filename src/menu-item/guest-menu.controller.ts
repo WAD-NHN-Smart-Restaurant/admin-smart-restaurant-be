@@ -1,17 +1,32 @@
 import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
-import { MenuService } from './menu.service';
+import { MenuItemService } from './menu-item.service';
 import { GuestMenuQueryDto } from './dto/guest-menu.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiExtraModels,
+} from '@nestjs/swagger';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
 import { BadRequestException } from '@nestjs/common';
-import { MenuCategoriesListResponseDto } from './dto/menu-response.dto';
+import {
+  MenuItemsListResponseDto,
+  MenuItemPhotoResponseDto,
+  ModifierGroupResponseDto,
+  ModifierOptionResponseDto,
+} from './dto/menu-response.dto';
 
-@ApiTags('Menu - Guest')
+@ApiExtraModels(
+  MenuItemPhotoResponseDto,
+  ModifierGroupResponseDto,
+  ModifierOptionResponseDto,
+)
+@ApiTags('Menu Items - Guest')
 @Controller('menu')
 export class GuestMenuController {
-  constructor(private readonly menuService: MenuService) {}
+  constructor(private readonly menuItemService: MenuItemService) {}
 
-  // Guest Menu API (requires QR token)
   @Get()
   @UseGuards(QrTokenGuard)
   @ApiOperation({
@@ -22,7 +37,7 @@ export class GuestMenuController {
   @ApiResponse({
     status: 200,
     description: 'Menu retrieved successfully',
-    type: MenuCategoriesListResponseDto,
+    type: MenuItemsListResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -37,12 +52,10 @@ export class GuestMenuController {
     },
   })
   async getGuestMenu(@Query() query: GuestMenuQueryDto, @Req() request: any) {
-    // Get restaurantId from QR token, fallback to query param for backward compatibility
-    const restaurantId = request.qrToken?.restaurantId || query.restaurantId;
-    if (!restaurantId) {
-      throw new BadRequestException('Restaurant ID is required');
+    const restaurantId = request.qrToken?.restaurantId;
+    if (restaurantId) {
+      return this.menuItemService.getGuestMenu(query, restaurantId);
     }
-
-    return this.menuService.getGuestMenu({ ...query, restaurantId });
+    throw new BadRequestException('Restaurant not found');
   }
 }
