@@ -66,12 +66,12 @@ export class WaiterService {
       table?: { restaurant_id?: string };
     };
     const restaurantId = order?.table?.restaurant_id;
+
+    this.ordersGateway.notifyOrderItemStatus('', updatedItem, 'accepted');
     if (restaurantId) {
-      this.ordersGateway.notifyOrderItemStatus(
-        restaurantId,
-        updatedItem,
-        'accepted',
-      );
+      // this.ordersGateway.notifyOrderItemStatus('', updatedItem, 'accepted');
+    } else {
+      console.warn('Restaurant ID not found for order item:', orderItemId);
     }
 
     return {
@@ -122,30 +122,29 @@ export class WaiterService {
   }
 
   /**
-   * Send accepted order items to kitchen
+   * Send pending order items to kitchen
    */
   async sendToKitchen(dto: SendToKitchenDto) {
     const { order_item_ids } = dto;
-    console.log('All items valid for sending to kitchen');
     // Verify all items are in accepted status
     const items = await Promise.all(
       order_item_ids.map((id) => this.waiterRepository.getOrderItemById(id)),
     );
-
+    console.log('Order items to send to kitchen:', items);
     const invalidItems = items.filter(
-      (item) => item && item.status !== 'accepted',
+      (item) => item && item.status !== 'pending',
     );
 
     if (invalidItems.length > 0) {
       throw new Error(
-        'All order items must be in accepted status before sending to kitchen',
+        'All order items must be in pending status before sending to kitchen',
       );
     }
 
     const updatedItems =
       await this.waiterRepository.updateMultipleOrderItemsStatus(
         order_item_ids,
-        'preparing',
+        'accepted',
       );
 
     // Notify kitchen via WebSocket
@@ -154,9 +153,7 @@ export class WaiterService {
         table?: { restaurant_id?: string };
       };
       const restaurantId = order?.table?.restaurant_id;
-      if (restaurantId) {
-        this.ordersGateway.notifyKitchen(restaurantId, updatedItems);
-      }
+      this.ordersGateway.notifyKitchen('', updatedItems);
     }
 
     return {

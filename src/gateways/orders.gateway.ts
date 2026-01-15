@@ -36,19 +36,28 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   @SubscribeMessage('join-restaurant')
   handleJoinRestaurant(
-    @MessageBody() data: { restaurantId: string; role: string },
+    @MessageBody() data: { restaurantId?: string; role: string },
     @ConnectedSocket() client: Socket,
   ) {
     const { restaurantId, role } = data;
-    const room = `restaurant:${restaurantId}`;
+
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}`;
+    // For now, use a default room for testing
+    const room = 'restaurant:default';
+
     void client.join(room);
 
     // Also join role-specific rooms
-    if (role) {
-      void client.join(`${room}:${role}`);
-    }
+    // if (role) {
+    //   void client.join(`${room}:${role}`);
+    // }
 
     this.logger.log(`Client ${client.id} joined room: ${room} as ${role}`);
+    this.logger.log(
+      `Client ${client.id} rooms: ${JSON.stringify([...client.rooms])}`,
+    );
+
     return { success: true, room };
   }
 
@@ -60,7 +69,8 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { restaurantId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    const room = `restaurant:${data.restaurantId}`;
+    // const room = `restaurant:${data.restaurantId}`;
+    const room = 'restaurant:default';
     void client.leave(room);
     this.logger.log(`Client ${client.id} left room: ${room}`);
     return { success: true };
@@ -70,7 +80,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * Notify new order to waiters
    */
   notifyNewOrder(restaurantId: string, orderData: Record<string, unknown>) {
-    const room = `restaurant:${restaurantId}:waiter`;
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}:waiter`;
+    const room = 'restaurant:default';
+
     this.server.to(room).emit('new-order', {
       type: 'new-order',
       data: orderData,
@@ -87,7 +100,9 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     orderItemData: Record<string, unknown>,
     status: 'accepted' | 'rejected',
   ) {
-    const room = `restaurant:${restaurantId}`;
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}`;
+    const room = 'restaurant:default';
 
     // Notify customers
     this.server.to(`${room}:customer`).emit('order-status-update', {
@@ -97,17 +112,27 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       timestamp: new Date().toISOString(),
     });
 
-    // Notify kitchen if accepted
+    // Notify kitchen if accepted (so they can see the accepted order)
     if (status === 'accepted') {
-      this.server.to(`${room}:kitchen_staff`).emit('order-accepted', {
+      this.server.to(`${room}`).emit('order-accepted', {
         type: 'order-accepted',
         data: orderItemData,
         timestamp: new Date().toISOString(),
+        // sound: false, // No sound for individual accepts, only when sent to kitchen
       });
+      console.log(`Order item accepted notification sent to kitchen: ${room}`);
     }
 
-    this.logger.log(
-      `Order item ${status} notification sent for restaurant: ${restaurantId}`,
+    // Also notify waiters about status changes
+    this.server.to(`${room}`).emit('order-status-update', {
+      type: 'order-item-status',
+      status,
+      data: orderItemData,
+      timestamp: new Date().toISOString(),
+    });
+
+    console.log(
+      `Order item ${status} notification sent for restaurant: ${restaurantId || 'default'}`,
     );
   }
 
@@ -115,14 +140,20 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * Notify kitchen when orders are sent
    */
   notifyKitchen(restaurantId: string, orderItems: Record<string, unknown>[]) {
-    const room = `restaurant:${restaurantId}:kitchen_staff`;
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}:kitchen`;
+    const room = 'restaurant:default';
+
     this.server.to(room).emit('orders-to-prepare', {
       type: 'orders-to-prepare',
       data: orderItems,
       timestamp: new Date().toISOString(),
       sound: true, // Trigger sound notification
     });
-    this.logger.log(`Kitchen notification sent to room: ${room}`);
+
+    this.logger.log(
+      `Kitchen notification sent to room: ${room}, items: ${orderItems.length}`,
+    );
   }
 
   /**
@@ -132,7 +163,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     restaurantId: string,
     orderItemData: Record<string, unknown>,
   ) {
-    const room = `restaurant:${restaurantId}:waiter`;
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}:waiter`;
+    const room = 'restaurant:default';
+
     this.server.to(room).emit('order-ready', {
       type: 'order-ready',
       data: orderItemData,
@@ -149,7 +183,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     restaurantId: string,
     orderItemData: Record<string, unknown>,
   ) {
-    const room = `restaurant:${restaurantId}:customer`;
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}:customer`;
+    const room = 'restaurant:default';
+
     this.server.to(room).emit('order-served', {
       type: 'order-served',
       data: orderItemData,
@@ -159,18 +196,38 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /**
+   * Notify waiters when kitchen rejects an order item
+   */
+  notifyOrderItemRejected(
+    restaurantId: string,
+    orderItemData: Record<string, unknown>,
+  ) {
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}:waiter`;
+    const room = 'restaurant:default';
+
+    this.server.to(room).emit('order-item-rejected', {
+      type: 'order-item-rejected',
+      data: orderItemData,
+      timestamp: new Date().toISOString(),
+      sound: true,
+    });
+    this.logger.log(`Order item rejected notification sent to room: ${room}`);
+  }
+
+  /**
    * Notify about bill creation
    */
   notifyBillCreated(restaurantId: string, billData: Record<string, unknown>) {
-    const room = `restaurant:${restaurantId}`;
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}`;
+    const room = 'restaurant:default';
     this.server.to(room).emit('bill-created', {
       type: 'bill-created',
       data: billData,
       timestamp: new Date().toISOString(),
     });
-    this.logger.log(
-      `Bill created notification sent for restaurant: ${restaurantId}`,
-    );
+    this.logger.log(`Bill created notification sent for restaurant: default`);
   }
 
   /**
@@ -180,14 +237,17 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     restaurantId: string,
     paymentData: Record<string, unknown>,
   ) {
-    const room = `restaurant:${restaurantId}`;
+    // TODO: Uncomment when restaurant_id is available
+    // const room = `restaurant:${restaurantId}`;
+    const room = 'restaurant:default';
+
     this.server.to(room).emit('payment-completed', {
       type: 'payment-completed',
       data: paymentData,
       timestamp: new Date().toISOString(),
     });
     this.logger.log(
-      `Payment completed notification sent for restaurant: ${restaurantId}`,
+      `Payment completed notification sent for restaurant: default`,
     );
   }
 }

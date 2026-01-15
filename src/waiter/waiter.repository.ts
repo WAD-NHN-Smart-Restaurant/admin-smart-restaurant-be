@@ -30,7 +30,7 @@ export class WaiterRepository {
       )
       .eq('table_id', tableId)
       .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
 
     if (error) throw mapSqlError(error);
     return data;
@@ -160,12 +160,6 @@ export class WaiterRepository {
       limit?: number;
     } = {},
   ) {
-    console.log(
-      'Fetching waiter orders with filters:',
-      filters,
-      'for restaurant:',
-      restaurantId,
-    );
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const offset = (page - 1) * limit;
@@ -252,7 +246,7 @@ export class WaiterRepository {
 
     // Pagination and ordering
     const { data, error, count } = await query
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (error) throw mapSqlError(error);

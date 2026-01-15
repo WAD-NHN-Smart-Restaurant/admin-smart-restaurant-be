@@ -125,7 +125,6 @@ export class WaiterController {
     description: 'Invalid order items or status',
   })
   async sendToKitchen(@Body() dto: SendToKitchenDto) {
-    console.log('Received request to send to kitchen:', dto);
     return this.waiterService.sendToKitchen(dto);
   }
 
