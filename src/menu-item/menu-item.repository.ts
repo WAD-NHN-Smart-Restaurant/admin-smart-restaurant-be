@@ -81,7 +81,7 @@ export class MenuItemRepository {
     const sortOrderParam = sortOrder || 'asc';
     const ascending = sortOrderParam === 'asc';
 
-    let sortedItems = [...items];
+    const sortedItems = [...items];
 
     switch (sortByParam) {
       case 'name':
@@ -165,7 +165,7 @@ export class MenuItemRepository {
 
     // Convert array result to map
     const popularityMap: Record<string, number> = {};
-    (data as any)?.forEach((item: any) => {
+    data?.forEach((item: any) => {
       popularityMap[item.menu_item_id] = Number(item.popularity_score);
     });
 
