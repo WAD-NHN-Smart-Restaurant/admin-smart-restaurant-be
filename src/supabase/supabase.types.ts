@@ -127,7 +127,6 @@ export type Database = {
           description: string | null;
           id: string;
           is_chef_recommended: boolean | null;
-          is_deleted: boolean | null;
           name: string;
           prep_time_minutes: number | null;
           price: number;
@@ -141,7 +140,6 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
-          is_deleted?: boolean | null;
           name: string;
           prep_time_minutes?: number | null;
           price: number;
@@ -155,7 +153,6 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
-          is_deleted?: boolean | null;
           name?: string;
           prep_time_minutes?: number | null;
           price?: number;
@@ -362,7 +359,9 @@ export type Database = {
         Row: {
           created_at: string;
           customer_id: string | null;
+          guest_name: string | null;
           id: string;
+          special_request: string | null;
           status: string | null;
           table_id: string | null;
           total_amount: number | null;
@@ -371,7 +370,9 @@ export type Database = {
         Insert: {
           created_at?: string;
           customer_id?: string | null;
+          guest_name?: string | null;
           id?: string;
+          special_request?: string | null;
           status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
@@ -380,7 +381,9 @@ export type Database = {
         Update: {
           created_at?: string;
           customer_id?: string | null;
+          guest_name?: string | null;
           id?: string;
+          special_request?: string | null;
           status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
@@ -443,30 +446,47 @@ export type Database = {
       };
       profiles: {
         Row: {
+          avatar_url: string | null;
           created_at: string;
           full_name: string | null;
           id: string;
           phone_number: string | null;
+          restaurant_id: string | null;
           role: Database['public']['Enums']['user_role'] | null;
+          storage_key: string | null;
           updated_at: string;
         };
         Insert: {
+          avatar_url?: string | null;
           created_at?: string;
           full_name?: string | null;
           id: string;
           phone_number?: string | null;
+          restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
+          storage_key?: string | null;
           updated_at?: string;
         };
         Update: {
+          avatar_url?: string | null;
           created_at?: string;
           full_name?: string | null;
           id?: string;
           phone_number?: string | null;
+          restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
+          storage_key?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_restaurant_id_fkey';
+            columns: ['restaurant_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       restaurants: {
         Row: {
