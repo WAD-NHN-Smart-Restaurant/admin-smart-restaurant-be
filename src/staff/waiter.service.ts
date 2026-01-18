@@ -159,6 +159,8 @@ export class WaiterService {
         'accepted',
       );
     // Notify kitchen via WebSocket
+    console.log('updatedItems', updatedItems);
+
     if (updatedItems.length > 0) {
       const order = updatedItems[0];
       const restaurantId = order?.menu_item?.restaurant_id;

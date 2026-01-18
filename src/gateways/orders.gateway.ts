@@ -67,16 +67,16 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
         assignedTableIds.forEach((tableId) => {
           void client.join(`table:${tableId}:waiter`);
         });
-        this.logger.log(
-          `Waiter ${waiterId} (client ${client.id}) joined ${assignedTableIds.length} table rooms`,
-        );
+        // console.log(
+        //   `Waiter ${waiterId} (client ${client.id}) joined ${assignedTableIds.length} table rooms`,
+        // );
       }
     }
 
-    this.logger.log(`Client ${client.id} joined room: ${room} as ${role}`);
-    this.logger.log(
-      `Client ${client.id} rooms: ${JSON.stringify([...client.rooms])}`,
-    );
+    // this.logger.log(`Client ${client.id} joined room: ${room} as ${role}`);
+    // this.logger.log(
+    //   `Client ${client.id} rooms: ${JSON.stringify([...client.rooms])}`,
+    // );
 
     return { success: true, room };
   }
@@ -95,7 +95,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Join table-specific room only (guests don't need restaurant-wide updates)
     void client.join(`table:${table_id}`);
 
-    this.logger.log(`Client ${client.id} joined table:${table_id}`);
+    // this.logger.log(`Client ${client.id} joined table:${table_id}`);
     return {
       success: true,
       message: `Joined table:${table_id}`,
@@ -114,7 +114,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ? `restaurant:${data.restaurantId}`
       : 'restaurant:default';
     void client.leave(room);
-    this.logger.log(`Client ${client.id} left room: ${room}`);
+    // this.logger.log(`Client ${client.id} left room: ${room}`);
     return { success: true };
   }
 
@@ -123,6 +123,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   notifyNewOrder(
     restaurantId: string,
+    tableId: string,
     assignedWaiterId: string,
     orderData: Record<string, unknown>,
   ) {
@@ -131,7 +132,6 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       : 'restaurant:default';
 
     // Also notify waiter assigned to this table specifically
-    const tableId = orderData['table_id'] as string;
 
     if (assignedWaiterId && tableId) {
       const waiterTableRoom = `table:${tableId}:waiter`;
@@ -288,7 +288,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const room = restaurantId
       ? `restaurant:${restaurantId}`
       : 'restaurant:default';
-    this.server.to(room).emit('bill-requested', {
+    this.server.to(`table:${tableId}:waiter`).emit('bill-requested', {
       order_id: orderId,
       table_id: tableId,
       timestamp: new Date().toISOString(),
@@ -344,7 +344,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       timestamp: new Date().toISOString(),
       sound: true, // Trigger sound notification
     });
-
+    console.log({ tableId });
     // notify to guest in table as well
     const tableRoom = `table:${tableId}`;
 
@@ -376,6 +376,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       ? `restaurant:${restaurantId}:waiter`
       : 'restaurant:default';
 
+    console.log({ tableId });
     const tableRoom = `table:${tableId}`;
 
     // Notify guests at table

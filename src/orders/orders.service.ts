@@ -94,11 +94,11 @@ export class OrdersService {
     // Get assigned waiter ID for the table
     const assignedWaiterId =
       await this.tablesRepository.getAssignedWaiterId(tableId);
-
     // Emit new order notification via WebSocket
     if (restaurantId && tableId && assignedWaiterId) {
       this.ordersGateway.notifyNewOrder(
         restaurantId as unknown as string,
+        tableId,
         assignedWaiterId,
         {
           orderId: order.id,
