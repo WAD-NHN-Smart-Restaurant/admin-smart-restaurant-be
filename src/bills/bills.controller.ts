@@ -76,6 +76,26 @@ export class BillsController {
   }
 
   /**
+   * Get bill by payment ID
+   * GET /bills/payment/:paymentId
+   */
+  @Get('payment/:paymentId')
+  @Roles('waiter', 'admin', 'customer')
+  @ApiOperation({
+    summary: 'Get bill details by payment ID',
+    description: 'Get complete bill details using payment ID',
+  })
+  @ApiParam({ name: 'paymentId', description: 'Payment ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Bill details retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Bill not found' })
+  async getBillByPaymentId(@Param('paymentId') paymentId: string) {
+    return this.billsService.getBillByPaymentId(paymentId);
+  }
+
+  /**
    * Apply discount to bill
    * POST /bills/:orderId/discount
    */

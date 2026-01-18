@@ -166,7 +166,6 @@ export class WaiterController {
     @CurrentUser() user: AuthenticatedUser,
     @GetRestaurantId() restaurantId: string,
   ) {
-    console.log({ restaurantId });
     return this.waiterService.getAssignedTables(user.id, restaurantId);
   }
 

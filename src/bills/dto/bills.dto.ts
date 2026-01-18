@@ -16,6 +16,14 @@ export class CreateBillDto {
   })
   @IsUUID('4')
   order_id: string;
+
+  @ApiProperty({
+    description: 'Payment method',
+    enum: ['cash', 'zalopay', 'momo', 'vnpay', 'stripe'],
+    example: 'cash',
+  })
+  @IsEnum(['cash', 'zalopay', 'momo', 'vnpay', 'stripe'])
+  payment_method: Database['public']['Enums']['payment_method'];
 }
 
 export class ApplyDiscountDto {

@@ -102,7 +102,7 @@ export class BillsRepository {
         order_id: orderId,
         amount: paymentData.amount,
         payment_method: paymentData.paymentMethod,
-        status: 'success',
+        status: 'pending',
       })
       .select()
       .single();
@@ -185,53 +185,49 @@ export class BillsRepository {
     }
 
     let query = this.supabase
-      .from('orders')
+      .from('payments')
       .select(
         `
         *,
-        table:tables!orders_table_id_fkey(
-          id,
-          table_number,
-          location,
-          restaurant_id
-        ),
-        order_items:order_items(
-          id,
-          status
-        ),
-        payments:payments(
+        order:orders!payments_order_id_fkey(
           id,
           status,
-          payment_method,
-          amount
+          total_amount,
+          created_at,
+          table:tables!orders_table_id_fkey(
+            id,
+            table_number,
+            location,
+            restaurant_id
+          ),
+          order_items:order_items(id)
         )
       `,
         { count: 'exact' },
       )
-      .eq('table.restaurant_id', restaurantId)
-      .in('status', ['payment_pending', 'completed']);
+      .eq('order.table.restaurant_id', restaurantId);
 
     // Apply waiter filter if assigned tables exist
     if (assignedTableIds && assignedTableIds.length > 0) {
-      query = query.in('table_id', assignedTableIds);
+      query = query.in('order.table_id', assignedTableIds);
     }
 
     // Apply status filter
     if (status) {
       query = query.eq(
         'status',
-        status as Database['public']['Enums']['order_status'],
+        status as Database['public']['Enums']['payment_status'],
       );
     }
 
     // Apply table number filter
     if (tableNumber) {
-      query = query.eq('table.table_number', tableNumber);
+      query = query.eq('order.table.table_number', tableNumber);
     }
 
     // Apply payment method filter
     if (paymentMethod) {
-      query = query.eq('payments.payment_method', paymentMethod);
+      query = query.eq('payment_method', paymentMethod);
     }
 
     // Apply sorting
@@ -256,6 +252,58 @@ export class BillsRepository {
         limit,
       },
     };
+  }
+
+  /**
+   * Get payment by ID
+   */
+  async getPaymentById(paymentId: string) {
+    const { data, error } = await this.supabase
+      .from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
+   * Get payment by order ID
+   */
+  async getPaymentByOrderId(orderId: string) {
+    const { data, error } = await this.supabase
+      .from('payments')
+      .select('*')
+      .eq('order_id', orderId)
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
+   * Update payment amount and metadata
+   */
+  async updatePaymentAmountAndMetadata(
+    paymentId: string,
+    amount: number,
+    metadata: any,
+  ) {
+    const { data, error } = await this.supabase
+      .from('payments')
+      .update({
+        amount,
+        metadata:
+          metadata as Database['public']['Tables']['payments']['Insert']['metadata'],
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', paymentId)
+      .select()
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
   }
 
   /**
