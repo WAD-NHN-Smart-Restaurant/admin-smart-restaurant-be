@@ -96,8 +96,6 @@ export class WaiterRepository {
    * Get assigned tables for a waiter
    */
   async getAssignedTables(waiterId: string, restaurantId: string) {
-    // For now, we'll return all tables for the restaurant
-    // In future, you can add a table_assignments table
     const { data, error } = await this.supabase
       .from('tables')
       .select(
@@ -112,6 +110,7 @@ export class WaiterRepository {
       `,
       )
       .eq('restaurant_id', restaurantId)
+      .eq('assigned_waiter_id', waiterId)
       .order('table_number', { ascending: true });
 
     if (error) throw mapSqlError(error);
@@ -152,8 +151,9 @@ export class WaiterRepository {
     restaurantId: string,
     filters: {
       search?: string;
-      status?: 'pending' | 'accepted' | 'ready' | 'served';
+      status?: 'pending' | 'accepted' | 'ready' | 'served' | 'payment_pending';
       tableId?: string;
+      waiterId?: string;
       startDate?: string;
       endDate?: string;
       page?: number;
@@ -164,8 +164,37 @@ export class WaiterRepository {
     const limit = filters.limit || 10;
     const offset = (page - 1) * limit;
 
-    // Build status filter for order_items
+    // If filtering by waiterId, first get assigned table IDs
+    let assignedTableIds: string[] | undefined;
+    if (filters.waiterId) {
+      const { data: tables, error: tablesError } = await this.supabase
+        .from('tables')
+        .select('id')
+        .eq('restaurant_id', restaurantId)
+        .eq('assigned_waiter_id', filters.waiterId);
+
+      if (tablesError) throw mapSqlError(tablesError);
+
+      assignedTableIds = tables?.map((t) => t.id) || [];
+
+      // If waiter has no assigned tables, return empty result
+      if (assignedTableIds.length === 0) {
+        return {
+          items: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+          },
+        };
+      }
+    }
+
+    // Build status filter for order_items or orders
     let orderItemStatusFilter: string | undefined;
+    let isOrderStatusFilter = false;
+
     if (filters.status) {
       switch (filters.status) {
         case 'pending':
@@ -180,6 +209,10 @@ export class WaiterRepository {
         case 'served':
           orderItemStatusFilter = 'status.eq.served';
           break;
+        case 'payment_pending':
+          // payment_pending is an order status, not order_item status
+          isOrderStatusFilter = true;
+          break;
       }
     }
 
@@ -191,7 +224,8 @@ export class WaiterRepository {
           table_number,
           location,
           capacity,
-          restaurant_id
+          restaurant_id,
+          assigned_waiter_id
         ),
         order_items:order_items(
           *,
@@ -215,11 +249,21 @@ export class WaiterRepository {
       { count: 'exact' },
     );
 
+    // Filter by assigned table IDs if waiterId was provided
+    if (assignedTableIds) {
+      query = query.in('table_id', assignedTableIds);
+    }
+
+    // Filter by order status if payment_pending
+    if (isOrderStatusFilter && filters.status === 'payment_pending') {
+      query = query.eq('status', 'payment_pending');
+    }
+
     // Filter by restaurant through table relationship
     // query = query.eq('table.restaurant_id', restaurantId);
 
-    // Filter order_items by status if specified
-    if (orderItemStatusFilter) {
+    // Filter order_items by status if specified (not for payment_pending)
+    if (orderItemStatusFilter && !isOrderStatusFilter) {
       query = query.or(orderItemStatusFilter, {
         foreignTable: 'order_items',
       });
@@ -252,8 +296,9 @@ export class WaiterRepository {
     if (error) throw mapSqlError(error);
 
     // Filter order_items client-side to only include items matching the status
+    // For payment_pending, return all order items without filtering
     let filteredData = data || [];
-    if (filters.status && filteredData.length > 0) {
+    if (filters.status && filteredData.length > 0 && !isOrderStatusFilter) {
       filteredData = filteredData
         .map((order) => {
           let filteredItems = order.order_items || [];
@@ -300,5 +345,55 @@ export class WaiterRepository {
         totalPages: Math.ceil((count || 0) / limit),
       },
     };
+  }
+
+  /**
+   * Recalculate and update order total amount
+   */
+  async recalculateOrderTotal(orderId: string) {
+    // Get all order items for this order
+    const { data: orderItems, error: itemsError } = await this.supabase
+      .from('order_items')
+      .select(
+        `
+        *,
+        order_item_options:order_item_options(
+          price_at_time
+        )
+      `,
+      )
+      .eq('order_id', orderId)
+      .neq('status', 'rejected'); // Exclude rejected items
+
+    if (itemsError) throw mapSqlError(itemsError);
+
+    // Calculate total amount
+    const totalAmount = orderItems.reduce((sum, item) => {
+      // Base item price
+      const itemTotal = item.quantity * item.unit_price;
+
+      // Add modifier prices
+      const modifierTotal =
+        item.order_item_options?.reduce(
+          (modSum, opt) => modSum + (opt.price_at_time || 0),
+          0,
+        ) || 0;
+
+      return sum + itemTotal + modifierTotal * item.quantity;
+    }, 0);
+
+    // Update order total
+    const { data, error } = await this.supabase
+      .from('orders')
+      .update({
+        total_amount: totalAmount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
   }
 }

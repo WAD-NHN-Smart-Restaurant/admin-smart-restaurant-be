@@ -4,129 +4,10 @@ import { SUPABASE } from '../utils/const';
 import { Database } from '../supabase/supabase.types';
 import { mapSqlError } from '../utils/map-sql-error.util';
 
-export interface CreateBillData {
-  orderId: string;
-  subtotal: number;
-  tax: number;
-  discount: number;
-  totalAmount: number;
-  discountReason?: string;
-}
-
 export interface UpdatePaymentData {
   paymentMethod: Database['public']['Enums']['payment_method'];
   amount: number;
 }
-
-// Mock data for bills/orders
-const MOCK_BILLS: any[] = [
-  {
-    id: '650e8400-e29b-41d4-a716-446655440003',
-    table_id: '550e8400-e29b-41d4-a716-446655440004',
-    customer_id: null,
-    status: 'payment_pending' as const,
-    total_amount: 520000,
-    created_at: new Date(Date.now() - 1800000).toISOString(), // 30 mins ago
-    updated_at: new Date(Date.now() - 300000).toISOString(),
-    table: {
-      id: '550e8400-e29b-41d4-a716-446655440004',
-      table_number: '3',
-      location: 'Main Floor',
-      restaurant_id: '550e8400-e29b-41d4-a716-446655440000',
-    },
-    order_items: [
-      {
-        id: '750e8400-e29b-41d4-a716-446655440005',
-        order_id: '650e8400-e29b-41d4-a716-446655440003',
-        menu_item_id: '850e8400-e29b-41d4-a716-446655440005',
-        quantity: 2,
-        unit_price: 200000,
-        total_price: 400000,
-        status: 'served' as const,
-        menu_item: {
-          id: '850e8400-e29b-41d4-a716-446655440005',
-          name: 'Ribeye Steak',
-          price: 200000,
-        },
-        order_item_options: [],
-      },
-      {
-        id: '750e8400-e29b-41d4-a716-446655440006',
-        order_id: '650e8400-e29b-41d4-a716-446655440003',
-        menu_item_id: '850e8400-e29b-41d4-a716-446655440006',
-        quantity: 2,
-        unit_price: 60000,
-        total_price: 120000,
-        status: 'served' as const,
-        menu_item: {
-          id: '850e8400-e29b-41d4-a716-446655440006',
-          name: 'Red Wine',
-          price: 60000,
-        },
-        order_item_options: [],
-      },
-    ],
-    payments: [],
-  },
-  {
-    id: '650e8400-e29b-41d4-a716-446655440004',
-    table_id: '550e8400-e29b-41d4-a716-446655440005',
-    customer_id: null,
-    status: 'completed' as const,
-    total_amount: 340000,
-    created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    updated_at: new Date(Date.now() - 1800000).toISOString(),
-    table: {
-      id: '550e8400-e29b-41d4-a716-446655440005',
-      table_number: '7',
-      location: 'Terrace',
-      restaurant_id: '550e8400-e29b-41d4-a716-446655440000',
-    },
-    order_items: [
-      {
-        id: '750e8400-e29b-41d4-a716-446655440007',
-        order_id: '650e8400-e29b-41d4-a716-446655440004',
-        menu_item_id: '850e8400-e29b-41d4-a716-446655440007',
-        quantity: 3,
-        unit_price: 90000,
-        total_price: 270000,
-        status: 'served' as const,
-        menu_item: {
-          id: '850e8400-e29b-41d4-a716-446655440007',
-          name: 'Pasta Carbonara',
-          price: 90000,
-        },
-        order_item_options: [],
-      },
-      {
-        id: '750e8400-e29b-41d4-a716-446655440008',
-        order_id: '650e8400-e29b-41d4-a716-446655440004',
-        menu_item_id: '850e8400-e29b-41d4-a716-446655440008',
-        quantity: 1,
-        unit_price: 70000,
-        total_price: 70000,
-        status: 'served' as const,
-        menu_item: {
-          id: '850e8400-e29b-41d4-a716-446655440008',
-          name: 'Tiramisu',
-          price: 70000,
-        },
-        order_item_options: [],
-      },
-    ],
-    payments: [
-      {
-        id: 'b50e8400-e29b-41d4-a716-446655440001',
-        order_id: '650e8400-e29b-41d4-a716-446655440004',
-        amount: 340000,
-        payment_method: 'cash' as const,
-        status: 'success' as const,
-        created_at: new Date(Date.now() - 1800000).toISOString(),
-        updated_at: new Date(Date.now() - 1800000).toISOString(),
-      },
-    ],
-  },
-];
 
 @Injectable()
 export class BillsRepository {
@@ -136,50 +17,98 @@ export class BillsRepository {
    * Get order with all items for bill calculation
    */
   async getOrderForBill(orderId: string) {
-    // Find order in mock data
-    const order = MOCK_BILLS.find((o) => o.id === orderId);
-    if (!order) {
-      throw new Error('Order not found');
-    }
-    return order;
+    const { data, error } = await this.supabase
+      .from('orders')
+      .select(
+        `
+        *,
+        table:tables!orders_table_id_fkey(
+          id,
+          table_number,
+          location,
+          restaurant_id
+        ),
+        order_items:order_items(
+          *,
+          menu_item:menu_items(
+            id,
+            name,
+            price
+          ),
+          order_item_options:order_item_options(
+            *,
+            modifier_option:modifier_options(
+              id,
+              name,
+              price_adjustment
+            )
+          )
+        )
+      `,
+      )
+      .eq('id', orderId)
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
+   * Get order with table relationship for restaurant ID
+   */
+  async getOrderWithTable(orderId: string) {
+    const { data, error } = await this.supabase
+      .from('orders')
+      .select(
+        `
+        *,
+        tables:tables!orders_table_id_fkey(
+          restaurant_id
+        )
+      `,
+      )
+      .eq('id', orderId)
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
   }
 
   /**
    * Update order with bill totals
    */
   async updateOrderTotals(orderId: string, totalAmount: number) {
-    const order = MOCK_BILLS.find((o) => o.id === orderId);
-    if (!order) {
-      throw new Error('Order not found');
-    }
+    const { data, error } = await this.supabase
+      .from('orders')
+      .update({
+        total_amount: totalAmount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
 
-    order.total_amount = totalAmount;
-    order.updated_at = new Date().toISOString();
-
-    return order;
+    if (error) throw mapSqlError(error);
+    return data;
   }
 
   /**
    * Create payment record
    */
   async createPayment(orderId: string, paymentData: UpdatePaymentData) {
-    const order = MOCK_BILLS.find((o) => o.id === orderId);
-    if (!order) {
-      throw new Error('Order not found');
-    }
+    const { data, error } = await this.supabase
+      .from('payments')
+      .insert({
+        order_id: orderId,
+        amount: paymentData.amount,
+        payment_method: paymentData.paymentMethod,
+        status: 'success',
+      })
+      .select()
+      .single();
 
-    const newPayment = {
-      id: `payment-${Date.now()}`,
-      order_id: orderId,
-      amount: paymentData.amount,
-      payment_method: paymentData.paymentMethod,
-      status: 'success' as const,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    order.payments.push(newPayment);
-    return newPayment;
+    if (error) throw mapSqlError(error);
+    return data;
   }
 
   /**
@@ -189,15 +118,18 @@ export class BillsRepository {
     orderId: string,
     status: Database['public']['Enums']['order_status'],
   ) {
-    const order = MOCK_BILLS.find((o) => o.id === orderId);
-    if (!order) {
-      throw new Error('Order not found');
-    }
+    const { data, error } = await this.supabase
+      .from('orders')
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
 
-    (order as any).status = status;
-    order.updated_at = new Date().toISOString();
-
-    return order;
+    if (error) throw mapSqlError(error);
+    return data;
   }
 
   /**
@@ -206,6 +138,7 @@ export class BillsRepository {
   async getBillsByRestaurant(
     restaurantId: string,
     filters: {
+      waiterId?: string;
       status?: string;
       paymentMethod?: string;
       tableNumber?: string;
@@ -216,6 +149,7 @@ export class BillsRepository {
     } = {},
   ) {
     const {
+      waiterId,
       status,
       paymentMethod,
       tableNumber,
@@ -225,59 +159,99 @@ export class BillsRepository {
       limit = 20,
     } = filters;
 
-    // Filter mock bills
-    let filteredBills = MOCK_BILLS.filter(
-      (bill) => bill.table.restaurant_id === restaurantId,
-    );
+    // If waiterId is provided, get assigned table IDs first
+    let assignedTableIds: string[] | undefined;
+    if (waiterId) {
+      const { data: assignedTables } = await this.supabase
+        .from('tables')
+        .select('id')
+        .eq('assigned_waiter_id', waiterId)
+        .eq('restaurant_id', restaurantId);
+
+      if (!assignedTables || assignedTables.length === 0) {
+        // No assigned tables, return empty result
+        return {
+          items: [],
+          pagination: {
+            total: 0,
+            totalPages: 0,
+            page,
+            limit,
+          },
+        };
+      }
+
+      assignedTableIds = assignedTables.map((t) => t.id);
+    }
+
+    let query = this.supabase
+      .from('orders')
+      .select(
+        `
+        *,
+        table:tables!orders_table_id_fkey(
+          id,
+          table_number,
+          location,
+          restaurant_id
+        ),
+        order_items:order_items(
+          id,
+          status
+        ),
+        payments:payments(
+          id,
+          status,
+          payment_method,
+          amount
+        )
+      `,
+        { count: 'exact' },
+      )
+      .eq('table.restaurant_id', restaurantId)
+      .in('status', ['payment_pending', 'completed']);
+
+    // Apply waiter filter if assigned tables exist
+    if (assignedTableIds && assignedTableIds.length > 0) {
+      query = query.in('table_id', assignedTableIds);
+    }
 
     // Apply status filter
     if (status) {
-      filteredBills = filteredBills.filter((bill) => bill.status === status);
+      query = query.eq(
+        'status',
+        status as Database['public']['Enums']['order_status'],
+      );
     }
 
     // Apply table number filter
     if (tableNumber) {
-      filteredBills = filteredBills.filter(
-        (bill) => bill.table.table_number === tableNumber,
-      );
+      query = query.eq('table.table_number', tableNumber);
     }
 
     // Apply payment method filter
     if (paymentMethod) {
-      filteredBills = filteredBills.filter((bill) =>
-        bill.payments.some((p: any) => p.payment_method === paymentMethod),
-      );
+      query = query.eq('payments.payment_method', paymentMethod);
     }
 
-    // Sort
-    filteredBills.sort((a, b) => {
-      let aVal: any, bVal: any;
-      if (sortBy === 'table_number') {
-        aVal = parseInt(a.table.table_number);
-        bVal = parseInt(b.table.table_number);
-      } else if (sortBy === 'total_amount') {
-        aVal = a.total_amount;
-        bVal = b.total_amount;
-      } else {
-        aVal = new Date(a.created_at).getTime();
-        bVal = new Date(b.created_at).getTime();
-      }
-
-      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-    });
+    // Apply sorting
+    const dbSortBy = sortBy === 'createdAt' ? 'created_at' : sortBy;
+    query = query.order(dbSortBy, { ascending: sortOrder === 'asc' });
 
     // Pagination
-    const total = filteredBills.length;
-    const totalPages = Math.ceil(total / limit);
-    const from = (page - 1) * limit;
-    const to = from + limit;
-    const items = filteredBills.slice(from, to);
+    const offset = (page - 1) * limit;
+    const { data, error, count } = await query.range(
+      offset,
+      offset + limit - 1,
+    );
+
+    if (error) throw mapSqlError(error);
 
     return {
-      items,
+      items: data || [],
       pagination: {
-        total,
-        totalPages,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
         page,
         limit,
       },
@@ -288,10 +262,42 @@ export class BillsRepository {
    * Get bill by order ID
    */
   async getBillByOrderId(orderId: string) {
-    const order = MOCK_BILLS.find((o) => o.id === orderId);
-    if (!order) {
-      throw new Error('Order not found');
-    }
-    return order;
+    const { data, error } = await this.supabase
+      .from('orders')
+      .select(
+        `
+        *,
+        table:tables!orders_table_id_fkey(
+          id,
+          table_number,
+          location,
+          restaurant_id
+        ),
+        order_items:order_items(
+          *,
+          menu_item:menu_items(
+            id,
+            name,
+            price
+          ),
+          order_item_options:order_item_options(
+            *,
+            modifier_option:modifier_options(
+              id,
+              name,
+              price_adjustment
+            )
+          )
+        ),
+        payments:payments(
+          *
+        )
+      `,
+      )
+      .eq('id', orderId)
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
   }
 }

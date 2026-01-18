@@ -255,4 +255,54 @@ export class KitchenRepository {
     if (error) throw mapSqlError(error);
     return data;
   }
+
+  /**
+   * Recalculate and update order total amount
+   */
+  async recalculateOrderTotal(orderId: string) {
+    // Get all order items for this order
+    const { data: orderItems, error: itemsError } = await this.supabase
+      .from('order_items')
+      .select(
+        `
+        *,
+        order_item_options:order_item_options(
+          price_at_time
+        )
+      `,
+      )
+      .eq('order_id', orderId)
+      .neq('status', 'rejected'); // Exclude rejected items
+
+    if (itemsError) throw mapSqlError(itemsError);
+
+    // Calculate total amount
+    const totalAmount = orderItems.reduce((sum, item) => {
+      // Base item price
+      const itemTotal = item.quantity * item.unit_price;
+
+      // Add modifier prices
+      const modifierTotal =
+        item.order_item_options?.reduce(
+          (modSum, opt) => modSum + (opt.price_at_time || 0),
+          0,
+        ) || 0;
+
+      return sum + itemTotal + modifierTotal * item.quantity;
+    }, 0);
+
+    // Update order total
+    const { data, error } = await this.supabase
+      .from('orders')
+      .update({
+        total_amount: totalAmount,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
 }

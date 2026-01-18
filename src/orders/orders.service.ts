@@ -6,8 +6,9 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { OrdersRepository } from './orders.repository';
-import { OrdersGateway } from './orders.gateway';
+import { OrdersGateway } from '../gateways/orders.gateway';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { TablesRepository } from '../tables/tables.repository';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../utils/const';
 import { Database } from '../supabase/supabase.types';
@@ -24,7 +25,8 @@ type OrderRow = Database['public']['Tables']['orders']['Row'] & {
 @Injectable()
 export class OrdersService {
   constructor(
-    private ordersRepository: OrdersRepository,
+    private readonly ordersRepository: OrdersRepository,
+    private readonly tablesRepository: TablesRepository,
     @Inject(SUPABASE) private readonly supabase: SupabaseClient<Database>,
     @Inject(forwardRef(() => OrdersGateway))
     private readonly ordersGateway: OrdersGateway,
@@ -89,13 +91,21 @@ export class OrdersService {
     const totalAmount = this.calculateOrderTotal(updatedOrder);
     await this.ordersRepository.updateOrderTotal(order.id, totalAmount);
 
+    // Get assigned waiter ID for the table
+    const assignedWaiterId =
+      await this.tablesRepository.getAssignedWaiterId(tableId);
+
     // Emit new order notification via WebSocket
-    if (restaurantId && tableId) {
-      this.ordersGateway.emitNewOrderNotification(
-        order.id,
+    if (restaurantId && tableId && assignedWaiterId) {
+      this.ordersGateway.notifyNewOrder(
         restaurantId as unknown as string,
+        assignedWaiterId,
+        {
+          orderId: order.id,
+        },
       );
       this.ordersGateway.emitOrderStatusUpdate(
+        restaurantId as unknown as string,
         tableId as unknown as string,
         order.id,
         order.status || '',
@@ -147,8 +157,9 @@ export class OrdersService {
     );
 
     // Emit bill request notification
-    this.ordersGateway.emitBillRequest(tableId, order.id, restaurantId);
+    this.ordersGateway.emitBillRequest(restaurantId, tableId, order.id);
     this.ordersGateway.emitOrderStatusUpdate(
+      restaurantId,
       tableId,
       order.id,
       'payment_pending',
@@ -200,13 +211,9 @@ export class OrdersService {
   /**
    * Update order status (admin/kitchen)
    */
-  async updateOrderStatus(orderId: string, status: string, tableId?: string) {
+  async updateOrderStatus(orderId: string, status: string) {
     const validStatuses = [
-      'pending',
-      'accepted',
-      'rejected',
-      'preparing',
-      'ready',
+      'active',
       'served',
       'completed',
       'cancelled',
@@ -219,12 +226,21 @@ export class OrdersService {
 
     const updatedOrder = await this.ordersRepository.updateOrderStatus(
       orderId,
-      status,
+      status as Database['public']['Enums']['order_status'],
     );
 
-    // Emit status update via WebSocket if tableId provided
-    if (tableId) {
-      this.ordersGateway.emitOrderStatusUpdate(tableId, orderId, status);
+    const tableId = updatedOrder.table_id;
+    const order = await this.ordersRepository.getOrderWithTable(orderId);
+    const restaurantId = order?.tables.restaurant_id;
+
+    // Emit status update via WebSocket if tableId and restaurantId provided
+    if (tableId && restaurantId) {
+      this.ordersGateway.emitOrderStatusUpdate(
+        restaurantId,
+        tableId,
+        orderId,
+        status as Database['public']['Enums']['order_status'],
+      );
     }
 
     return updatedOrder;

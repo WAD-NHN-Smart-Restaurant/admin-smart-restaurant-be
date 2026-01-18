@@ -28,9 +28,10 @@ export class WaiterService {
     restaurantId: string,
     filters: {
       search?: string;
-      status?: 'pending' | 'accepted' | 'ready';
+      status?: 'pending' | 'accepted' | 'ready' | 'served' | 'payment_pending';
       tableId?: string;
       startDate?: string;
+      waiterId?: string;
       endDate?: string;
       page?: number;
       limit?: number;
@@ -62,16 +63,21 @@ export class WaiterService {
     );
 
     // Notify via WebSocket
-    const order = updatedItem.order as unknown as {
-      table?: { restaurant_id?: string };
-    };
-    const restaurantId = order?.table?.restaurant_id;
+    const tableId = updatedItem.order.table_id;
+    const restaurantId = updatedItem.menu_item.restaurant_id;
 
-    this.ordersGateway.notifyOrderItemStatus('', updatedItem, 'accepted');
-    if (restaurantId) {
-      // this.ordersGateway.notifyOrderItemStatus('', updatedItem, 'accepted');
+    if (tableId && restaurantId) {
+      this.ordersGateway.notifyOrderItemStatus(
+        restaurantId,
+        tableId,
+        updatedItem,
+        'accepted',
+      );
     } else {
-      console.warn('Restaurant ID not found for order item:', orderItemId);
+      console.warn(
+        'Table ID or Restaurant ID not found for order item:',
+        orderItemId,
+      );
     }
 
     return {
@@ -101,19 +107,26 @@ export class WaiterService {
       'rejected',
     );
 
+    // Recalculate order total amount (excluding rejected items)
+    await this.waiterRepository.recalculateOrderTotal(updatedItem.order_id);
+
     // Notify via WebSocket
-    const order = updatedItem.order as unknown as {
-      table?: { restaurant_id?: string };
-    };
-    const restaurantId = order?.table?.restaurant_id;
-    if (restaurantId) {
+    const tableId = updatedItem.order.table_id;
+    const restaurantId = updatedItem.menu_item.restaurant_id;
+
+    if (tableId && restaurantId) {
       this.ordersGateway.notifyOrderItemStatus(
         restaurantId,
+        tableId,
         updatedItem,
         'rejected',
       );
+    } else {
+      console.warn(
+        'Table ID or Restaurant ID not found for order item:',
+        orderItemId,
+      );
     }
-
     return {
       message: 'Order item rejected',
       reason: dto.reason,
@@ -130,7 +143,6 @@ export class WaiterService {
     const items = await Promise.all(
       order_item_ids.map((id) => this.waiterRepository.getOrderItemById(id)),
     );
-    console.log('Order items to send to kitchen:', items);
     const invalidItems = items.filter(
       (item) => item && item.status !== 'pending',
     );
@@ -146,14 +158,14 @@ export class WaiterService {
         order_item_ids,
         'accepted',
       );
-
     // Notify kitchen via WebSocket
     if (updatedItems.length > 0) {
-      const order = updatedItems[0].order as unknown as {
-        table?: { restaurant_id?: string };
-      };
-      const restaurantId = order?.table?.restaurant_id;
-      this.ordersGateway.notifyKitchen('', updatedItems);
+      const order = updatedItems[0];
+      const restaurantId = order?.menu_item?.restaurant_id;
+      const tableId = order?.order?.table_id;
+      if (restaurantId && tableId) {
+        this.ordersGateway.notifyKitchen(restaurantId, tableId, updatedItems);
+      }
     }
 
     return {
@@ -169,9 +181,9 @@ export class WaiterService {
     const { order_item_ids } = dto;
 
     // Verify all items are ready
-    const items = await Promise.all(
-      order_item_ids.map((id) => this.waiterRepository.getOrderItemById(id)),
-    );
+    // const items = await Promise.all(
+    //   order_item_ids.map((id) => this.waiterRepository.getOrderItemById(id)),
+    // );
 
     // For now, allow marking any status as served (in mock mode)
     // In production, uncomment the strict check below:
@@ -190,15 +202,15 @@ export class WaiterService {
 
     // Notify customer via WebSocket
     if (updatedItems.length > 0) {
-      const order = updatedItems[0].order as unknown as {
-        table?: { restaurant_id?: string };
-      };
-      const restaurantId = order?.table?.restaurant_id;
-      if (restaurantId) {
+      const tableId = updatedItems[0].order.table_id;
+      const restaurantId = updatedItems[0].menu_item.restaurant_id;
+      if (tableId && restaurantId) {
         // Send each item individually
         updatedItems.forEach((item) => {
-          this.ordersGateway.notifyOrderServed(restaurantId, item);
+          this.ordersGateway.notifyOrderServed(restaurantId, tableId, item);
         });
+      } else {
+        console.warn('Table ID or Restaurant ID not found for order items');
       }
     }
 

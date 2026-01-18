@@ -21,12 +21,12 @@ export class GetWaiterOrdersQueryDto {
 
   @ApiPropertyOptional({
     description: 'Filter by order status',
-    enum: ['active', 'payment_pending', 'completed', 'cancelled'],
-    example: 'active',
+    enum: ['pending', 'accepted', 'ready', 'served', 'payment_pending'],
+    example: 'pending',
   })
-  @IsEnum(['pending', 'accepted', 'ready'])
+  @IsEnum(['pending', 'accepted', 'ready', 'served', 'payment_pending'])
   @IsOptional()
-  status?: 'pending' | 'accepted' | 'ready';
+  status?: 'pending' | 'accepted' | 'ready' | 'served' | 'payment_pending';
   @ApiPropertyOptional({
     description: 'Filter by table ID',
     example: 'a1111111-1111-1111-1111-111111111111',
@@ -34,6 +34,14 @@ export class GetWaiterOrdersQueryDto {
   @IsUUID('4')
   @IsOptional()
   tableId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by waiter ID to show only orders from assigned tables',
+    example: 'a1111111-1111-1111-1111-111111111111',
+  })
+  @IsUUID('4')
+  @IsOptional()
+  waiterId?: string;
 
   @ApiPropertyOptional({
     description: 'Filter orders from this date (ISO 8601)',

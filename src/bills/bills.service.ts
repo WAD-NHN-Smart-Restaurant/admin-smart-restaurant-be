@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Injectable,
   NotFoundException,
@@ -12,6 +13,35 @@ import {
   ProcessPaymentDto,
 } from './dto/bills.dto';
 import { OrdersGateway } from '../gateways/orders.gateway';
+import { Database } from '../supabase/supabase.types';
+
+type OrderItem = Database['public']['Tables']['order_items']['Row'];
+type OrderItemStatus = Database['public']['Enums']['order_item_status'];
+type OrderStatus = Database['public']['Enums']['order_status'];
+type PaymentMethod = Database['public']['Enums']['payment_method'];
+type PaymentStatus = Database['public']['Enums']['payment_status'];
+type MenuItem = Database['public']['Tables']['menu_items']['Row'];
+type OrderItemOption =
+  Database['public']['Tables']['order_item_options']['Row'];
+type ModifierOption = Database['public']['Tables']['modifier_options']['Row'];
+type Table = Database['public']['Tables']['tables']['Row'];
+type Order = Database['public']['Tables']['orders']['Row'];
+type Payment = Database['public']['Tables']['payments']['Row'];
+
+interface OrderItemOptionWithModifier extends OrderItemOption {
+  modifier_option?: ModifierOption;
+}
+
+interface OrderItemWithRelations extends OrderItem {
+  menu_item?: MenuItem;
+  order_item_options?: OrderItemOptionWithModifier[];
+}
+
+interface OrderWithRelations extends Order {
+  table?: Table;
+  order_items?: OrderItemWithRelations[];
+  payments?: Payment[];
+}
 
 @Injectable()
 export class BillsService {
@@ -29,8 +59,8 @@ export class BillsService {
    */
   private calculateBillTotals(
     orderItems: Array<{
-      status: string;
-      total_price?: number;
+      status: OrderItemStatus;
+      total_price: number;
       unit_price: number;
       quantity: number;
     }>,
@@ -79,16 +109,16 @@ export class BillsService {
       throw new BadRequestException('Bill already generated for this order');
     }
 
-    // Check if all items are served
-    const hasUnservedItems = order.order_items?.some(
-      (item: any) => item.status !== 'served' && item.status !== 'rejected',
-    );
+    // // Check if all items are served
+    // const hasUnservedItems = order.order_items?.some(
+    //   (item) => item.status !== 'served' && item.status !== 'rejected',
+    // );
 
-    if (hasUnservedItems) {
-      throw new BadRequestException(
-        'Cannot create bill. Some items are not served yet.',
-      );
-    }
+    // if (hasUnservedItems) {
+    //   throw new BadRequestException(
+    //     'Cannot create bill. Some items are not served yet.',
+    //   );
+    // }
 
     // Calculate totals
     const totals = this.calculateBillTotals(order.order_items || [], 0);
@@ -104,12 +134,12 @@ export class BillsService {
       bill: {
         orderId: updatedOrder.id,
         tableNumber: updatedOrder.table?.table_number,
-        items: updatedOrder.order_items?.map((item: any) => ({
+        items: updatedOrder.order_items?.map((item) => ({
           id: item.id,
           name: item.menu_item?.name,
           quantity: item.quantity,
           unitPrice: item.unit_price,
-          modifiers: item.order_item_options?.map((opt: any) => ({
+          modifiers: item.order_item_options?.map((opt) => ({
             name: opt.modifier_option?.name,
             price: opt.price_at_time || opt.modifier_option?.price_adjustment,
           })),
@@ -125,11 +155,22 @@ export class BillsService {
     };
 
     // Notify via WebSocket
-    if (updatedOrder.table?.restaurant_id) {
-      this.ordersGateway.notifyBillCreated(
-        updatedOrder.table.restaurant_id,
-        billData.bill,
+    if (updatedOrder.table_id) {
+      // Get restaurant ID from the order's table relationship
+      const orderWithTable = await this.billsRepository.getOrderWithTable(
+        updatedOrder.id,
       );
+      const restaurantId = orderWithTable?.tables?.restaurant_id;
+
+      if (restaurantId) {
+        this.ordersGateway.notifyBillCreated(
+          restaurantId,
+          updatedOrder.table_id,
+          billData.bill,
+        );
+      } else {
+        console.warn('Restaurant ID not found for bill creation');
+      }
     }
 
     return billData;
@@ -153,10 +194,8 @@ export class BillsService {
 
     if (dto.discount_type === 'percentage') {
       const subtotal =
-        order.order_items?.reduce(
-          (sum: number, item: any) => sum + (item.total_price || 0),
-          0,
-        ) || 0;
+        order.order_items?.reduce((sum, item) => sum + item.total_price, 0) ||
+        0;
       discountAmount = (subtotal * dto.discount_value) / 100;
     } else {
       discountAmount = dto.discount_value;
@@ -226,11 +265,22 @@ export class BillsService {
     };
 
     // Notify via WebSocket
-    if (order.table?.restaurant_id) {
-      this.ordersGateway.notifyPaymentCompleted(
-        order.table.restaurant_id,
-        paymentResult.payment,
+    if (order.table_id) {
+      // Get restaurant ID from the order's table relationship
+      const orderWithTable = await this.billsRepository.getOrderWithTable(
+        order.id,
       );
+      const restaurantId = orderWithTable?.tables?.restaurant_id;
+
+      if (restaurantId) {
+        this.ordersGateway.notifyPaymentCompleted(
+          restaurantId,
+          order.table_id,
+          paymentResult.payment,
+        );
+      } else {
+        console.warn('Restaurant ID not found for payment completion');
+      }
     }
 
     return paymentResult;
@@ -252,12 +302,12 @@ export class BillsService {
       bill: {
         orderId: order.id,
         tableNumber: order.table?.table_number,
-        items: order.order_items?.map((item: any) => ({
+        items: order.order_items?.map((item) => ({
           id: item.id,
           name: item.menu_item?.name,
           quantity: item.quantity,
           unitPrice: item.unit_price,
-          modifiers: item.order_item_options?.map((opt: any) => ({
+          modifiers: item.order_item_options?.map((opt) => ({
             name: opt.modifier_option?.name,
             price: opt.price_at_time || opt.modifier_option?.price_adjustment,
           })),
@@ -281,6 +331,7 @@ export class BillsService {
   async getRestaurantBills(
     restaurantId: string,
     query: {
+      waiterId?: string;
       status?: string;
       paymentMethod?: string;
       tableNumber?: string;

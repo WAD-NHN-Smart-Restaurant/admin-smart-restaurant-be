@@ -5,11 +5,20 @@ import {
   Min,
   Max,
   IsEnum,
+  IsUUID,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class GetRestaurantBillsQueryDto {
+  @ApiPropertyOptional({
+    description: 'Filter by waiter ID to show only bills from assigned tables',
+    example: 'a1111111-1111-1111-1111-111111111111',
+  })
+  @IsUUID('4')
+  @IsOptional()
+  waiterId?: string;
+
   @ApiPropertyOptional({
     description: 'Filter by order status',
     enum: ['payment_pending', 'completed', 'cancelled'],

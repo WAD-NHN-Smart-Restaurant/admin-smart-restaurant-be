@@ -64,17 +64,19 @@ export class KitchenService {
       note,
     );
 
-    // Get restaurant ID from the order
-    const order = updatedItem.order as unknown as {
-      table?: { restaurant_id?: string };
-    };
-    const restaurantId = order?.table?.restaurant_id;
-
+    const restaurantId = updatedItem.menu_item.restaurant_id;
+    const tableId = updatedItem.order.table_id;
+    const assignedWaiterId = updatedItem.order.table?.assigned_waiter_id;
     // Notify via WebSocket
-    if (restaurantId) {
+    if (restaurantId && tableId && assignedWaiterId) {
       if (status === 'ready') {
         // Notify waiters that order is ready
-        this.ordersGateway.notifyOrderReady(restaurantId, updatedItem);
+        this.ordersGateway.notifyOrderReady(
+          restaurantId,
+          tableId,
+          assignedWaiterId,
+          updatedItem,
+        );
       }
     }
 
@@ -129,16 +131,21 @@ export class KitchenService {
     );
 
     // Notify via WebSocket
-    if (status === 'ready' && updatedItems.length > 0) {
-      const order = updatedItems[0].order as unknown as {
-        table?: { restaurant_id?: string };
-      };
-      const restaurantId = order?.table?.restaurant_id;
-
-      if (restaurantId) {
+    if (updatedItems.length > 0) {
+      const restaurantId = updatedItems[0]?.menu_item?.restaurant_id;
+      const tableId = updatedItems[0]?.order?.table?.id;
+      const assignedWaiterId =
+        updatedItems[0]?.order?.table?.assigned_waiter_id;
+      if (restaurantId && tableId && assignedWaiterId) {
         // Notify waiters for each item
         updatedItems.forEach((item) => {
-          this.ordersGateway.notifyOrderReady(restaurantId, item);
+          this.ordersGateway.notifyOrderReady(
+            restaurantId,
+            tableId,
+            assignedWaiterId,
+            item,
+            status,
+          );
         });
       }
     }
@@ -175,6 +182,9 @@ export class KitchenService {
       reason,
     );
 
+    // Recalculate order total amount (excluding rejected items)
+    await this.kitchenRepository.recalculateOrderTotal(updatedItem.order_id);
+
     // Get restaurant ID from the order
     const order = updatedItem.order as unknown as {
       table?: { restaurant_id?: string };
@@ -183,7 +193,14 @@ export class KitchenService {
 
     // Notify via WebSocket
     if (restaurantId) {
-      this.ordersGateway.notifyOrderItemRejected(restaurantId, updatedItem);
+      const tableId = updatedItem?.order?.table?.id;
+      if (tableId) {
+        this.ordersGateway.notifyOrderItemRejected(
+          restaurantId,
+          tableId,
+          updatedItem,
+        );
+      }
     }
 
     return {

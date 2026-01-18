@@ -231,4 +231,75 @@ export class TablesRepository {
 
     return data;
   }
+
+  /**
+   * Assign a waiter to a table
+   */
+  async assignWaiter(
+    tableId: string,
+    waiterId: string | null,
+  ): Promise<TableRow> {
+    const now = new Date().toISOString();
+    const updateData = {
+      assigned_waiter_id: waiterId,
+      assigned_at: waiterId ? now : null,
+      updated_at: now,
+    };
+
+    const { data, error } = await this.supabase
+      .from('tables')
+      .update(updateData)
+      .eq('id', tableId)
+      .select()
+      .single();
+
+    if (error) {
+      throw mapSqlError(error);
+    }
+
+    return data;
+  }
+
+  /**
+   * Bulk assign a waiter to multiple tables
+   */
+  async bulkAssignWaiter(
+    tableIds: string[],
+    waiterId?: string | null,
+  ): Promise<{ count: number }> {
+    const now = new Date().toISOString();
+    const updateData = {
+      assigned_waiter_id: waiterId,
+      assigned_at: waiterId ? now : null,
+      updated_at: now,
+    };
+
+    const { count, error } = await this.supabase
+      .from('tables')
+      .update(updateData)
+      .in('id', tableIds);
+
+    if (error) {
+      throw mapSqlError(error);
+    }
+
+    return { count: count || 0 };
+  }
+
+  /**
+   * Get assigned waiter ID for a table
+   */
+  async getAssignedWaiterId(tableId: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from('tables')
+      .select('assigned_waiter_id')
+      .eq('id', tableId)
+      .maybeSingle();
+
+    if (error) {
+      throw mapSqlError(error);
+    }
+
+    return data?.assigned_waiter_id || null;
+  }
 }

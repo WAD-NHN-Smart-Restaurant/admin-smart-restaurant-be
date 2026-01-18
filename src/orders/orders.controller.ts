@@ -10,7 +10,7 @@ import {
   Param,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { OrdersGateway } from './orders.gateway';
+import { OrdersGateway } from '../gateways/orders.gateway';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Request as ExpressRequest } from 'express';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
@@ -70,11 +70,7 @@ export class OrdersController {
     const { tableId } = req.user;
 
     const order = await this.ordersService.getActiveOrderForGuest(tableId);
-
-    return {
-      status: true,
-      data: order,
-    };
+    return order;
   }
 
   /**
@@ -93,11 +89,7 @@ export class OrdersController {
 
     const order = await this.ordersService.requestBill(tableId, restaurantId);
 
-    return {
-      status: true,
-      data: order,
-      message: 'Bill requested successfully',
-    };
+    return order;
   }
 
   /**
@@ -115,12 +107,9 @@ export class OrdersController {
     const { tableId, restaurantId } = req.user;
 
     // Emit call waiter notification via WebSocket
-    this.ordersGateway.emitCallWaiter(tableId, restaurantId);
+    this.ordersGateway.emitCallWaiter(restaurantId, tableId);
 
-    return {
-      status: true,
-      message: 'Waiter called successfully',
-    };
+    return 'Waiter called successfully';
   }
 
   /**
@@ -168,10 +157,7 @@ export class OrdersController {
   async getOrder(@Param('id') orderId: string) {
     const order = await this.ordersService.getOrder(orderId);
 
-    return {
-      status: true,
-      data: order,
-    };
+    return order;
   }
 
   /**
@@ -188,10 +174,6 @@ export class OrdersController {
 
     const order = await this.ordersService.updateOrderStatus(orderId, status);
 
-    return {
-      status: true,
-      data: order,
-      message: 'Order status updated successfully',
-    };
+    return order;
   }
 }
