@@ -453,11 +453,7 @@ export class MenuItemRepository {
       )
       .eq('menu_categories.restaurant_id', restaurantId)
       .eq('menu_categories.status', MENU_CATEGORY_STATUS_ACTIVE)
-      .in('status', [
-        MENU_ITEM_STATUS_AVAILABLE,
-        MENU_ITEM_STATUS_SOLD_OUT,
-        MENU_ITEM_STATUS_UNAVAILABLE,
-      ]);
+      .in('status', [MENU_ITEM_STATUS_AVAILABLE, MENU_ITEM_STATUS_SOLD_OUT]);
 
     // Apply filters
     query = this.applyMenuItemFilters(
@@ -504,50 +500,23 @@ export class MenuItemRepository {
       sortOrder,
     );
 
-    // Group items by category
-    const categoryMap = new Map();
-    sortedItems.forEach((item) => {
-      const category = item.menu_categories;
-      if (!category) return;
+    // Paginate items
+    const pagination = this.paginateItems(sortedItems, page, limit);
 
-      if (!categoryMap.has(category.id)) {
-        categoryMap.set(category.id, {
-          id: category.id,
-          name: category.name,
-          status: category.status,
-          createdAt: category.created_at,
-          updatedAt: category.updated_at,
-          description: category.description,
-          displayOrder: category.display_order,
-          restaurantId: category.restaurant_id,
-          menuItems: [],
-        });
-      }
-
-      // Clean up item - remove category nested object and add to category's menuItems
-      const cleanItem = {
-        ...item,
-        menu_categories: undefined,
-      };
-      categoryMap.get(category.id).menuItems.push(cleanItem);
-    });
-
-    // Convert map to array and sort by display order
-    const groupedCategories = Array.from(categoryMap.values()).sort(
-      (a, b) => a.displayOrder - b.displayOrder,
-    );
-
-    // Paginate at category level (for now return all, can adjust if needed)
-    const total = sortedItems.length;
-    const totalPages = Math.ceil(total / limit);
+    // Add category name to each item and flatten the structure
+    const itemsWithCategoryName = pagination.items.map((item) => ({
+      ...item,
+      categoryName: item.menu_categories?.name || null,
+      menu_categories: undefined, // Remove the nested menu_categories object
+    }));
 
     return {
-      items: groupedCategories,
+      items: itemsWithCategoryName,
       pagination: {
-        total,
-        totalPages,
-        page,
-        limit,
+        total: pagination.total,
+        totalPages: pagination.totalPages,
+        page: pagination.page,
+        limit: pagination.limit,
       },
     };
   }

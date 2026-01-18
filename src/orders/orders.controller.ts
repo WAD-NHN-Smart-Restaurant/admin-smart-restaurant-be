@@ -34,10 +34,10 @@ export class OrdersController {
     @Body() createOrderDto: CreateOrderDto,
     @Request()
     req: ExpressRequest & {
-      user: { tableId: string; restaurantId: string };
+      qrToken?: { tableId: string; restaurantId: string };
     },
   ) {
-    const { tableId, restaurantId } = req.user;
+    const { tableId, restaurantId } = req.qrToken!;
     const { guestName, notes } = createOrderDto;
 
     const order = await this.ordersService.createOrAddOrder(
@@ -64,10 +64,10 @@ export class OrdersController {
   async getActiveOrder(
     @Request()
     req: ExpressRequest & {
-      user: { tableId: string };
+      qrToken?: { tableId: string };
     },
   ) {
-    const { tableId } = req.user;
+    const { tableId } = req.qrToken!;
 
     const order = await this.ordersService.getActiveOrderForGuest(tableId);
     return order;
@@ -82,10 +82,10 @@ export class OrdersController {
   async requestBill(
     @Request()
     req: ExpressRequest & {
-      user: { tableId: string; restaurantId: string };
+      qrToken?: { tableId: string; restaurantId: string };
     },
   ) {
-    const { tableId, restaurantId } = req.user;
+    const { tableId, restaurantId } = req.qrToken!;
 
     const order = await this.ordersService.requestBill(tableId, restaurantId);
 
@@ -101,10 +101,10 @@ export class OrdersController {
   callWaiter(
     @Request()
     req: ExpressRequest & {
-      user: { tableId: string; restaurantId: string };
+      qrToken?: { tableId: string; restaurantId: string };
     },
   ) {
-    const { tableId, restaurantId } = req.user;
+    const { tableId, restaurantId } = req.qrToken!;
 
     // Emit call waiter notification via WebSocket
     this.ordersGateway.emitCallWaiter(restaurantId, tableId);
@@ -121,12 +121,12 @@ export class OrdersController {
   async getRestaurantOrders(
     @Request()
     req: ExpressRequest & {
-      user: { restaurantId: string };
+      qrToken?: { restaurantId: string };
     },
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
   ) {
-    const restaurantId = req.user.restaurantId;
+    const restaurantId = req.qrToken!.restaurantId;
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 50;
     const offset = (pageNum - 1) * limitNum;
