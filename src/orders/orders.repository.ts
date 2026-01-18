@@ -47,7 +47,11 @@ export class OrdersRepository {
         *,
         order_items (
           *,
-          order_item_options (*)
+          menu_items!inner(name),
+          order_item_options (
+            *,
+            modifier_options!inner(name)
+          )
         )
       `,
       )
@@ -72,7 +76,11 @@ export class OrdersRepository {
         *,
         order_items (
           *,
-          order_item_options (*)
+          menu_items!inner(name),
+          order_item_options (
+            *,
+            modifier_options!inner(name)
+          )
         )
       `,
       )
@@ -190,7 +198,11 @@ export class OrdersRepository {
         tables!inner(restaurant_id),
         order_items (
           *,
-          order_item_options (*)
+          menu_items!inner(name),
+          order_item_options (
+            *,
+            modifier_options!inner(name)
+          )
         )
       `,
         { count: 'exact' },

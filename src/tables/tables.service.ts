@@ -204,7 +204,7 @@ export class TablesService {
 
     const payload: {
       tableId: string;
-      tableNumber: number | string;
+      tableNumber: string;
       restaurantId: string;
       createdAt: string;
     } = {
