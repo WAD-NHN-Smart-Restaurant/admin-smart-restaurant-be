@@ -416,11 +416,12 @@ export type Database = {
           id: string;
           checkout_url: string | null;
           currency: string | null;
+          discount_amount: number | null;
+          discount_rate: number | null;
           metadata: Json | null;
           order_id: string;
           payment_method: string | null;
-          provider_order_code: string | null;
-          qr_code_url: string | null;
+          stripe_session_id: string | null;
           status: Database['public']['Enums']['payment_status'] | null;
           updated_at: string;
         };
@@ -430,11 +431,12 @@ export type Database = {
           id?: string;
           checkout_url?: string | null;
           currency?: string | null;
+          discount_amount?: number | null;
+          discount_rate?: number | null;
           metadata?: Json | null;
           order_id: string;
           payment_method?: string | null;
-          provider_order_code?: string | null;
-          qr_code_url?: string | null;
+          stripe_session_id?: string | null;
           status?: Database['public']['Enums']['payment_status'];
           updated_at?: string;
         };
@@ -444,11 +446,12 @@ export type Database = {
           id?: string;
           checkout_url?: string | null;
           currency?: string | null;
+          discount_amount?: number | null;
+          discount_rate?: number | null;
           metadata?: Json | null;
           order_id?: string;
           payment_method?: string | null;
-          provider_order_code?: string | null;
-          qr_code_url?: string | null;
+          stripe_session_id?: string | null;
           status?: Database['public']['Enums']['payment_status'];
           updated_at?: string;
         };
@@ -609,8 +612,8 @@ export type Database = {
         | 'payment_pending'
         | 'completed'
         | 'cancelled';
-      payment_method: 'cash' | 'zalopay' | 'momo' | 'vnpay' | 'stripe';
-      payment_status: 'pending' | 'success' | 'failed';
+      payment_method: 'cash' | 'stripe';
+      payment_status: 'accepted' | 'pending' | 'success' | 'failed';
       table_status: 'available' | 'occupied' | 'inactive';
       user_role:
         | 'super_admin'
@@ -764,8 +767,8 @@ export const Constants = {
         'completed',
         'cancelled',
       ],
-      payment_method: ['cash', 'zalopay', 'momo', 'vnpay', 'stripe'],
-      payment_status: ['pending', 'success', 'failed'],
+      payment_method: ['cash', 'stripe'],
+      payment_status: ['accepted', 'pending', 'success', 'failed'],
       table_status: ['available', 'occupied', 'inactive'],
       user_role: [
         'super_admin',
