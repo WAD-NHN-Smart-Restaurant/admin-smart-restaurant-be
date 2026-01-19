@@ -74,6 +74,8 @@ export class SupabaseJwtAuthGuard implements CanActivate {
         .select('role, restaurant_id')
         .eq('id', payload.sub)
         .single();
+      
+      console.log('Member data fetched in JWT guard:', { memberData, memberError });
 
       if (memberError || !memberData) {
         throw new UnauthorizedException('User is not a restaurant member');

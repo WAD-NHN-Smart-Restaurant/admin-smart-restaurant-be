@@ -69,9 +69,7 @@ export class ProfilesService {
       }
 
       // Determine folder based on user role
-      const role = profile.role || 'customer';
-      const folder =
-        role === 'customer' ? 'avatars/customers' : 'avatars/admins';
+      const folder = `avatars/${profile.role}s/${userId}`;
 
       // Upload new avatar to R2
       const { url, key } = await this.storageService.uploadFile(file, folder);

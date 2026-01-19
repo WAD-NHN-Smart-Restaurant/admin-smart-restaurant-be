@@ -29,7 +29,6 @@ export class ProfilesRepository {
     userId: string,
     updateData: {
       full_name?: string;
-      phone_number?: string;
       avatar_url?: string | null;
       storage_key?: string | null;
     },
