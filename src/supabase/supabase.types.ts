@@ -411,27 +411,39 @@ export type Database = {
           amount: number;
           created_at: string;
           id: string;
+          checkout_url: string | null;
+          currency: string | null;
+          metadata: Json | null;
           order_id: string;
           payment_method: string | null;
-          status: string | null;
+          stripe_session_id: string | null;
+          status: Database['public']['Enums']['payment_status'] | null;
           updated_at: string;
         };
         Insert: {
           amount: number;
           created_at?: string;
           id?: string;
+          checkout_url?: string | null;
+          currency?: string | null;
+          metadata?: Json | null;
           order_id: string;
           payment_method?: string | null;
-          status?: string | null;
+          stripe_session_id?: string | null;
+          status?: Database['public']['Enums']['payment_status'] | null;
           updated_at?: string;
         };
         Update: {
           amount?: number;
           created_at?: string;
           id?: string;
+          checkout_url?: string | null;
+          currency?: string | null;
+          metadata?: Json | null;
           order_id?: string;
           payment_method?: string | null;
-          status?: string | null;
+          stripe_session_id?: string | null;
+          status?: Database['public']['Enums']['payment_status'] | null;
           updated_at?: string;
         };
         Relationships: [
@@ -478,15 +490,7 @@ export type Database = {
           storage_key?: string | null;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'profiles_restaurant_id_fkey';
-            columns: ['restaurant_id'];
-            isOneToOne: false;
-            referencedRelation: 'restaurants';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
       restaurants: {
         Row: {
@@ -581,7 +585,7 @@ export type Database = {
         | 'ready'
         | 'served';
       order_status: 'active' | 'payment_pending' | 'completed' | 'cancelled';
-      payment_method: 'cash' | 'zalopay' | 'momo' | 'vnpay' | 'stripe';
+      payment_method: 'cash' | 'stripe';
       payment_status: 'pending' | 'success' | 'failed';
       table_status: 'available' | 'occupied' | 'inactive';
       user_role:
@@ -730,7 +734,7 @@ export const Constants = {
         'served',
       ],
       order_status: ['active', 'payment_pending', 'completed', 'cancelled'],
-      payment_method: ['cash', 'zalopay', 'momo', 'vnpay', 'stripe'],
+      payment_method: ['cash', 'stripe'],
       payment_status: ['pending', 'success', 'failed'],
       table_status: ['available', 'occupied', 'inactive'],
       user_role: [

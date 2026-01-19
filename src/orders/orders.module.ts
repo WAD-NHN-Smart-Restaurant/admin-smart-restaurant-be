@@ -10,6 +10,6 @@ import { TablesModule } from '../tables/tables.module';
   imports: [SupabaseModule, TablesModule],
   providers: [OrdersService, OrdersRepository, OrdersGateway],
   controllers: [OrdersController],
-  exports: [OrdersService, OrdersGateway],
+  exports: [OrdersService, OrdersGateway, OrdersRepository],
 })
 export class OrdersModule {}

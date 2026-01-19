@@ -192,6 +192,31 @@ export class OrdersService {
   }
 
   /**
+   * Cancel bill request (change order status back to served)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async cancelBillRequest(tableId: string, _restaurantId: string) {
+    const order = await this.ordersRepository.getActiveOrderByTable(tableId);
+
+    if (!order) {
+      throw new NotFoundException('No active order found for this table');
+    }
+
+    if (order.status !== 'payment_pending') {
+      throw new BadRequestException('Order is not in payment_pending status');
+    }
+
+    const updatedOrder = await this.ordersRepository.updateOrderStatus(
+      order.id,
+      'preparing',
+    );
+
+    // Emit status update
+    this.ordersGateway.emitOrderStatusUpdate(tableId, order.id, 'preparing');
+    return updatedOrder;
+  }
+
+  /**
    * Calculate order total (sum of all items with modifiers)
    */
   private calculateOrderTotal(order: OrderRow | null): number {

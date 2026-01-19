@@ -11,6 +11,7 @@ import { ModifierOptionModule } from './modifier-option/modifier-option.module';
 import { OrdersModule } from './orders/orders.module';
 import { HealthController } from './common/health.controller';
 import { ProfilesModule } from './profiles/profiles.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ProfilesModule } from './profiles/profiles.module';
     ModifierOptionModule,
     OrdersModule,
     ProfilesModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
 })
