@@ -180,12 +180,14 @@ export class AuthService {
             createdAt: result.user.created_at,
             updatedAt: result.user.updated_at,
           },
-          profile: profile ? {
-            full_name: profile.full_name,
-            phone_number: profile.phone_number,
-            avatar_url: profile.avatar_url,
-            role: profile.role,
-          } : null,
+          profile: profile
+            ? {
+                full_name: profile.full_name,
+                phone_number: profile.phone_number,
+                avatar_url: profile.avatar_url,
+                role: profile.role,
+              }
+            : null,
           accessToken: result.session.access_token,
           refreshToken: result.session.refresh_token,
         },
@@ -273,12 +275,14 @@ export class AuthService {
           avatar: user.user_metadata?.avatar,
           createdAt: user.created_at,
           updatedAt: user.updated_at,
-          profile: profile ? {
-            full_name: profile.full_name,
-            phone_number: profile.phone_number,
-            avatar_url: profile.avatar_url,
-            role: profile.role,
-          } : null,
+          profile: profile
+            ? {
+                full_name: profile.full_name,
+                phone_number: profile.phone_number,
+                avatar_url: profile.avatar_url,
+                role: profile.role,
+              }
+            : null,
         },
       };
     } catch (error: any) {
@@ -354,7 +358,10 @@ export class AuthService {
         newPassword: dto.newPassword,
       });
 
-      console.log('Password updated successfully for token user', dto.accessToken);
+      console.log(
+        'Password updated successfully for token user',
+        dto.accessToken,
+      );
 
       return {
         success: true,
@@ -394,7 +401,8 @@ export class AuthService {
 
       return {
         success: true,
-        message: 'Email update initiated. Please check your new email to confirm the change.',
+        message:
+          'Email update initiated. Please check your new email to confirm the change.',
         data: {
           user: {
             id: result.user.id,
@@ -404,9 +412,7 @@ export class AuthService {
         },
       };
     } catch (error: any) {
-      throw new BadRequestException(
-        error.message || 'Failed to update email',
-      );
+      throw new BadRequestException(error.message || 'Failed to update email');
     }
   }
 
@@ -419,7 +425,8 @@ export class AuthService {
 
       return {
         success: true,
-        message: 'Phone number update initiated. Please verify your new phone number.',
+        message:
+          'Phone number update initiated. Please verify your new phone number.',
         data: {
           user: {
             id: result.user.id,

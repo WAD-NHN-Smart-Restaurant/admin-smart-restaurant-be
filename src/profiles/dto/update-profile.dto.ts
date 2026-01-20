@@ -4,6 +4,7 @@ import {
   IsOptional,
   MinLength,
   MaxLength,
+  Matches,
 } from 'class-validator';
 
 export class UpdateProfileDto {
@@ -18,4 +19,15 @@ export class UpdateProfileDto {
   @MinLength(1, { message: 'Full name cannot be empty' })
   @MaxLength(100, { message: 'Full name cannot exceed 100 characters' })
   full_name?: string;
+
+  @ApiPropertyOptional({
+    description: 'User phone number',
+    example: '+1234567890',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: 'Phone number must be in E.164 format (e.g., +1234567890)',
+  })
+  phone_number?: string;
 }

@@ -49,7 +49,7 @@ export class QrTokenGuard implements CanActivate {
         ...decoded,
         token: token,
       };
-      
+
       return true;
     } catch (error) {
       if (error instanceof BadRequestException) {

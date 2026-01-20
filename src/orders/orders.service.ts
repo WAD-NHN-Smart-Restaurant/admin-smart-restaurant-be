@@ -127,27 +127,29 @@ export class OrdersService {
 
     return {
       ...order,
-      orderItems: order.order_items?.map((item: any) => ({
-        id: item.id,
-        orderId: item.order_id,
-        menuItemId: item.menu_item_id,
-        menuItemName: item.menu_items?.name || null,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        notes: item.notes,
-        status: item.status,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        totalPrice: item.total_price,
-        orderItemOptions: item.order_item_options?.map((opt: any) => ({
-          id: opt.id,
-          orderItemId: opt.order_item_id,
-          modifierOptionId: opt.modifier_option_id,
-          optionName: opt.modifier_options?.name || null,
-          priceAtTime: opt.price_at_time,
-          createdAt: opt.created_at,
+      orderItems:
+        order.order_items?.map((item: any) => ({
+          id: item.id,
+          orderId: item.order_id,
+          menuItemId: item.menu_item_id,
+          menuItemName: item.menu_items?.name || null,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          notes: item.notes,
+          status: item.status,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+          totalPrice: item.total_price,
+          orderItemOptions:
+            item.order_item_options?.map((opt: any) => ({
+              id: opt.id,
+              orderItemId: opt.order_item_id,
+              modifierOptionId: opt.modifier_option_id,
+              optionName: opt.modifier_options?.name || null,
+              priceAtTime: opt.price_at_time,
+              createdAt: opt.created_at,
+            })) || [],
         })) || [],
-      })) || [],
       order_items: undefined, // Remove snake_case field
     };
   }

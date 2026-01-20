@@ -115,4 +115,26 @@ export class ProfilesService {
       );
     }
   }
+
+  async updatePhoneNumber(
+    userId: string,
+    requestUserId: string,
+    phoneNumber: string,
+  ) {
+    // Ensure user can only update their own phone number
+    if (userId !== requestUserId) {
+      throw new ForbiddenException('You can only update your own phone number');
+    }
+
+    try {
+      return await this.profilesRepository.updateProfile(userId, {
+        phone_number: phoneNumber,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to update phone number: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to update phone number: ${error.message}`,
+      );
+    }
+  }
 }

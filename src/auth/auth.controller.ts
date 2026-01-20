@@ -339,7 +339,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Update password' })
   @ApiResponse({ status: 200, description: 'Password updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({type: UpdatePasswordDto_1})
+  @ApiBody({ type: UpdatePasswordDto_1 })
   async updatePassword(
     @Body() dto: Omit<UpdatePasswordDto_1, 'accessToken'>,
     @Headers('authorization') authHeader: string,
@@ -350,7 +350,10 @@ export class AuthController {
       throw new UnauthorizedException('No token provided');
     }
 
-    if (process.env.SUPABASE_URL === undefined || process.env.SUPABASE_PUBLISHABLE_KEY === undefined) {
+    if (
+      process.env.SUPABASE_URL === undefined ||
+      process.env.SUPABASE_PUBLISHABLE_KEY === undefined
+    ) {
       throw new Error('Supabase environment variables are not set');
     }
     const supabase = createClient(
@@ -359,9 +362,9 @@ export class AuthController {
     );
     //return this.authService.updatePassword({ ...dto, accessToken: token });
     const { data, error } = await supabase.auth.setSession({
-          access_token: token,
-          refresh_token: dto.refreshToken,
-        });
+      access_token: token,
+      refresh_token: dto.refreshToken,
+    });
 
     return supabase.auth.updateUser({ password: dto.newPassword });
   }
@@ -396,7 +399,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Update user email',
     description:
-      'Updates the authenticated user\'s email address. A confirmation email will be sent to the new email address.',
+      "Updates the authenticated user's email address. A confirmation email will be sent to the new email address.",
   })
   @ApiResponse({
     status: 200,
@@ -419,7 +422,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Update user phone number',
     description:
-      'Updates the authenticated user\'s phone number. A verification code will be sent to the new phone number.',
+      "Updates the authenticated user's phone number. A verification code will be sent to the new phone number.",
   })
   @ApiResponse({
     status: 200,
