@@ -372,18 +372,33 @@ export class BillsService {
     );
 
     return {
-      items: bills.items.map((payment) => ({
-        orderId: payment.order?.id,
-        paymentId: payment.id,
-        tableNumber: payment.order?.table?.table_number,
-        totalAmount: payment.amount,
-        status: payment.order?.status,
-        itemCount: payment.order?.order_items?.length || 0,
-        paymentStatus: payment.status,
-        paymentMethod: payment.payment_method,
-        createdAt: payment.created_at,
-        updatedAt: payment.updated_at,
-      })),
+      items: bills.items.map((payment) => {
+        // Get order total from orders table
+        const orderTotal = payment.order?.total_amount || 0;
+        // Calculate tax (10%)
+        const tax = orderTotal * 0.1;
+        // Get discount amount if it exists
+        const discountAmount = payment.discount_amount || 0;
+        // Final total with discount and tax
+        const finalTotal = (orderTotal - discountAmount) * 1.1;
+
+        return {
+          orderId: payment.order?.id,
+          paymentId: payment.id,
+          tableNumber: payment.order?.table?.table_number,
+          totalAmount: orderTotal,
+          tax: tax,
+          discountAmount: discountAmount,
+          finalTotal: finalTotal,
+          status: payment.order?.status,
+          itemCount: payment.order?.order_items?.length || 0,
+          paymentStatus: payment.status,
+          discountRate: payment.discount_rate,
+          paymentMethod: payment.payment_method,
+          createdAt: payment.created_at,
+          updatedAt: payment.updated_at,
+        };
+      }),
       pagination: bills.pagination,
     };
   }

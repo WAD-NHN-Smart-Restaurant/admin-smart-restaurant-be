@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { OrdersRepository } from '../orders/orders.repository';
-import { OrdersGateway } from '../orders/orders.gateway';
+import { OrdersGateway } from '../gateways/orders.gateway';
 import { PaymentsRepository, PaymentRow } from './payments.repository';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
@@ -73,6 +73,8 @@ export class PaymentsService {
 
   /**
    * Accept payment request and apply discount (called by waiter/admin)
+   * Calculates discount_amount from order total and discount_rate
+   * Updates status to 'accepted'
    */
   async acceptPaymentWithDiscount(
     paymentId: string,
@@ -88,16 +90,28 @@ export class PaymentsService {
       throw new BadRequestException('Payment is not in created status');
     }
 
+    // Always get order to calculate from order total
+    const order = await this.ordersRepository.getOrderById(payment.order_id);
+    if (!order) {
+      throw new NotFoundException('Order not found for this payment');
+    }
+
+    // Calculate order total (subtotal of all items + options)
+    const orderTotal = this.calculateOrderTotal(order as OrderRow);
+
+    // Calculate discount_amount based on discountRate
+    // If discountAmount is provided, use it; otherwise calculate from rate
     let effectiveDiscountAmount = discountAmount;
     if (!effectiveDiscountAmount || effectiveDiscountAmount === 0) {
-      // Calculate discount_amount from order total when not provided
-      const order = await this.ordersRepository.getOrderById(payment.order_id);
-      if (order) {
-        const orderTotal = this.calculateOrderTotal(order as OrderRow);
-        effectiveDiscountAmount =
-          Math.round(orderTotal * (discountRate / 100) * 100) / 100;
-      }
+      effectiveDiscountAmount =
+        Math.round(orderTotal * (discountRate / 100) * 100) / 100;
     }
+
+    this.logger.log(
+      `Accepting payment ${paymentId}:`,
+      `Order total: $${orderTotal}`,
+      `Discount: ${discountRate}% = $${effectiveDiscountAmount}`,
+    );
 
     // Update payment to accepted with discount values
     const updatedPayment = await this.paymentsRepository.updatePayment(
@@ -110,7 +124,7 @@ export class PaymentsService {
     );
 
     this.logger.log(
-      `Payment ${paymentId} accepted with discount: ${discountRate}% / ${discountAmount}`,
+      `Payment ${paymentId} accepted with discount: ${discountRate}% / $${effectiveDiscountAmount}`,
     );
 
     return updatedPayment;
@@ -341,7 +355,7 @@ export class PaymentsService {
   }
 
   /**
-   * Confirm payment status
+   * Confirm payment status (Guest)
    */
   async confirmPayment(
     paymentId: string,
@@ -389,6 +403,75 @@ export class PaymentsService {
     }
 
     this.logger.log(`Payment ${status}: ${paymentId} - Order: ${order.id}`);
+
+    return updatedPayment;
+  }
+
+  /**
+   * Confirm payment by Admin/Waiter (no tableId verification needed)
+   * Updates payment status to 'success' and order status to 'completed'
+   */
+  async confirmPaymentByAdmin(paymentId: string): Promise<PaymentRow> {
+    const payment = await this.paymentsRepository.findById(paymentId);
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    if (payment.status !== 'accepted' && payment.status !== 'pending') {
+      throw new BadRequestException(
+        'Payment must be in accepted or pending status',
+      );
+    }
+
+    const order = await this.ordersRepository.getOrderById(payment.order_id);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Build final payment values
+    const finalValues = this.buildFinalPaymentUpdate(
+      payment,
+      order as OrderRow,
+    );
+
+    // Update payment to success
+    const updatedPayment = await this.paymentsRepository.updatePayment(
+      payment.id,
+      {
+        status: 'success',
+        amount: finalValues.amount,
+        currency: finalValues.currency,
+        payment_method: finalValues.paymentMethod || payment.payment_method,
+        discount_amount: finalValues.discountAmount,
+        discount_rate: finalValues.discountRate,
+        metadata: {
+          ...(finalValues.metadata as Record<string, unknown>),
+          confirmedAt: new Date().toISOString(),
+          confirmationSource: 'admin',
+        } as unknown as Database['public']['Tables']['payments']['Update']['metadata'],
+      },
+    );
+
+    // Update order to completed
+    await this.ordersRepository.updateOrderStatus(order.id, 'completed');
+
+    // Emit socket event
+    const orderWithTable = await this.ordersRepository.getOrderWithTable(
+      order.id,
+    );
+    if (orderWithTable && order.table_id) {
+      const restaurantId = orderWithTable.tables.restaurant_id;
+      this.ordersGateway.emitOrderStatusUpdate(
+        restaurantId,
+        order.table_id,
+        order.id,
+        'completed',
+      );
+    }
+
+    this.logger.log(
+      `Payment confirmed by admin: ${paymentId} - Order: ${order.id} marked as completed`,
+    );
 
     return updatedPayment;
   }
