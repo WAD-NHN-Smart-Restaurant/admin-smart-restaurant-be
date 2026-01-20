@@ -5,12 +5,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { OrdersRepository } from '../orders/orders.repository';
-import { OrdersGateway } from '../orders/orders.gateway';
 import { PaymentsRepository } from './payments.repository';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { StripeService } from './stripe/stripe.service';
 import { Database } from '../supabase/supabase.types';
+import { OrdersGateway } from 'src/gateways/orders.gateway';
 
 // Table/Order type aliases
 type OrderItemOptionRow =
@@ -389,6 +389,16 @@ export class PaymentsService {
     tableId: string,
   ): Promise<void> {
     await this.ordersRepository.updateOrderStatus(orderId, 'completed');
-    this.ordersGateway.emitOrderStatusUpdate(tableId, orderId, 'completed');
+    const order = await this.ordersRepository.getOrderWithTable(orderId);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    const restaurantId = order.tables.restaurant_id;
+    this.ordersGateway.emitOrderStatusUpdate(
+      restaurantId,
+      tableId,
+      orderId,
+      'completed',
+    );
   }
 }

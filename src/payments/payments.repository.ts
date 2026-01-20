@@ -54,10 +54,22 @@ export class PaymentsRepository {
   }
 
   async updatePayment(id: string, updates: UpdatePaymentParams) {
+    if (updates.status === undefined || updates.status === null) {
+      throw new Error('No updates provided for payment');
+      return;
+    }
+
+    // Filter out null values to match Supabase update type requirements
+    const filteredUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, value]) => value !== null),
+    ) as Omit<UpdatePaymentParams, 'status'> & {
+      status: NonNullable<UpdatePaymentParams['status']>;
+    };
+
     const { data, error } = await this.supabase
       .from('payments')
       .update({
-        ...updates,
+        ...filteredUpdates,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

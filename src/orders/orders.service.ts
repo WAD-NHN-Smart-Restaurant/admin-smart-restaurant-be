@@ -221,11 +221,16 @@ export class OrdersService {
 
     const updatedOrder = await this.ordersRepository.updateOrderStatus(
       order.id,
-      'preparing',
+      'cancelled',
     );
 
     // Emit status update
-    this.ordersGateway.emitOrderStatusUpdate(tableId, order.id, 'preparing');
+    this.ordersGateway.emitOrderStatusUpdate(
+      _restaurantId,
+      tableId,
+      order.id,
+      'cancelled',
+    );
     return updatedOrder;
   }
 

@@ -95,7 +95,7 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Join table-specific room only (guests don't need restaurant-wide updates)
     void client.join(`table:${table_id}`);
 
-    // this.logger.log(`Client ${client.id} joined table:${table_id}`);
+    this.logger.log(`Client ${client.id} joined table:${table_id}`);
     return {
       success: true,
       message: `Joined table:${table_id}`,
@@ -127,6 +127,12 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     assignedWaiterId: string,
     orderData: Record<string, unknown>,
   ) {
+    console.log('notifyNewOrder called with:', {
+      restaurantId,
+      tableId,
+      assignedWaiterId,
+      orderData,
+    });
     const room = restaurantId
       ? `restaurant:${restaurantId}:waiter`
       : 'restaurant:default';
