@@ -8,9 +8,10 @@ import {
   Request,
   Query,
   Param,
+  BadRequestException,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { OrdersGateway } from './orders.gateway';
+import { OrdersGateway } from '../gateways/orders.gateway';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Request as ExpressRequest } from 'express';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
@@ -70,11 +71,7 @@ export class OrdersController {
     const { tableId } = req.qrToken!;
 
     const order = await this.ordersService.getActiveOrderForGuest(tableId);
-
-    return {
-      status: true,
-      data: order,
-    };
+    return order;
   }
 
   /**
@@ -93,11 +90,7 @@ export class OrdersController {
 
     const order = await this.ordersService.requestBill(tableId, restaurantId);
 
-    return {
-      status: true,
-      data: order,
-      message: 'Bill requested successfully',
-    };
+    return order;
   }
 
   /**
@@ -141,12 +134,9 @@ export class OrdersController {
     const { tableId, restaurantId } = req.qrToken!;
 
     // Emit call waiter notification via WebSocket
-    this.ordersGateway.emitCallWaiter(tableId, restaurantId);
+    this.ordersGateway.emitCallWaiter(restaurantId, tableId);
 
-    return {
-      status: true,
-      message: 'Waiter called successfully',
-    };
+    return 'Waiter called successfully';
   }
 
   /**
@@ -194,10 +184,7 @@ export class OrdersController {
   async getOrder(@Param('id') orderId: string) {
     const order = await this.ordersService.getOrder(orderId);
 
-    return {
-      status: true,
-      data: order,
-    };
+    return order;
   }
 
   /**
@@ -214,10 +201,89 @@ export class OrdersController {
 
     const order = await this.ordersService.updateOrderStatus(orderId, status);
 
-    return {
-      status: true,
-      data: order,
-      message: 'Order status updated successfully',
-    };
+    return order;
+  }
+
+  /**
+   * Admin: Get revenue report by time range
+   * GET /admin/analytics/revenue
+   */
+  @Get('analytics/revenue')
+  @UseGuards(SupabaseJwtAuthGuard, AdminGuard)
+  async getRevenueReport(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('groupBy') groupBy: 'day' | 'week' | 'month' = 'day',
+    @Query('restaurantId') restaurantId: string,
+  ) {
+    if (!startDate || !endDate || !restaurantId) {
+      throw new BadRequestException(
+        'startDate, endDate and restaurantId are required',
+      );
+    }
+
+    const data = await this.ordersService.getRevenueReport(
+      restaurantId,
+      startDate,
+      endDate,
+      groupBy,
+    );
+
+    return data;
+  }
+
+  /**
+   * Admin: Get top menu items by revenue
+   * GET /admin/analytics/top-items
+   */
+  @Get('analytics/top-items')
+  @UseGuards(SupabaseJwtAuthGuard, AdminGuard)
+  async getTopMenuItems(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('limit') limit: string = '10',
+    @Query('restaurantId') restaurantId: string,
+  ) {
+    if (!startDate || !endDate || !restaurantId) {
+      throw new BadRequestException(
+        'startDate, endDate and restaurantId are required',
+      );
+    }
+
+    const limitNum = parseInt(limit, 10) || 10;
+    const data = await this.ordersService.getTopMenuItems(
+      restaurantId,
+      startDate,
+      endDate,
+      limitNum,
+    );
+
+    return data;
+  }
+
+  /**
+   * Admin: Get analytics chart data
+   * GET /admin/analytics/charts
+   */
+  @Get('analytics/charts')
+  @UseGuards(SupabaseJwtAuthGuard, AdminGuard)
+  async getAnalyticsCharts(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('restaurantId') restaurantId: string,
+  ) {
+    if (!startDate || !endDate || !restaurantId) {
+      throw new BadRequestException(
+        'startDate, endDate and restaurantId are required',
+      );
+    }
+
+    const data = await this.ordersService.getAnalyticsChartData(
+      restaurantId,
+      startDate,
+      endDate,
+    );
+
+    return data;
   }
 }

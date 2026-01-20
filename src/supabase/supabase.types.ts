@@ -127,6 +127,7 @@ export type Database = {
           description: string | null;
           id: string;
           is_chef_recommended: boolean | null;
+          is_deleted: boolean | null;
           name: string;
           prep_time_minutes: number | null;
           price: number;
@@ -140,6 +141,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
+          is_deleted?: boolean | null;
           name: string;
           prep_time_minutes?: number | null;
           price: number;
@@ -153,6 +155,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
+          is_deleted?: boolean | null;
           name?: string;
           prep_time_minutes?: number | null;
           price?: number;
@@ -362,7 +365,7 @@ export type Database = {
           guest_name: string | null;
           id: string;
           special_request: string | null;
-          status: string | null;
+          status: Database['public']['Enums']['order_status'];
           table_id: string | null;
           total_amount: number | null;
           updated_at: string;
@@ -373,7 +376,7 @@ export type Database = {
           guest_name?: string | null;
           id?: string;
           special_request?: string | null;
-          status?: string | null;
+          status?: Database['public']['Enums']['order_status'];
           table_id?: string | null;
           total_amount?: number | null;
           updated_at?: string;
@@ -384,7 +387,7 @@ export type Database = {
           guest_name?: string | null;
           id?: string;
           special_request?: string | null;
-          status?: string | null;
+          status?: Database['public']['Enums']['order_status'];
           table_id?: string | null;
           total_amount?: number | null;
           updated_at?: string;
@@ -521,6 +524,8 @@ export type Database = {
       };
       tables: {
         Row: {
+          assigned_at: string | null;
+          assigned_waiter_id: string | null;
           capacity: number;
           created_at: string;
           description: string | null;
@@ -534,6 +539,8 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          assigned_at?: string | null;
+          assigned_waiter_id?: string | null;
           capacity: number;
           created_at?: string;
           description?: string | null;
@@ -547,6 +554,8 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          assigned_at?: string | null;
+          assigned_waiter_id?: string | null;
           capacity?: number;
           created_at?: string;
           description?: string | null;
@@ -565,6 +574,13 @@ export type Database = {
             columns: ['restaurant_id'];
             isOneToOne: false;
             referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tables_assigned_waiter_id_fkey';
+            columns: ['assigned_waiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
         ];
@@ -590,7 +606,12 @@ export type Database = {
         | 'preparing'
         | 'ready'
         | 'served';
-      order_status: 'active' | 'payment_pending' | 'completed' | 'cancelled';
+      order_status:
+        | 'active'
+        | 'served'
+        | 'payment_pending'
+        | 'completed'
+        | 'cancelled';
       payment_method: 'cash' | 'stripe';
       payment_status: 'created' | 'accepted' | 'pending' | 'success' | 'failed';
       table_status: 'available' | 'occupied' | 'inactive';
@@ -739,7 +760,13 @@ export const Constants = {
         'ready',
         'served',
       ],
-      order_status: ['active', 'payment_pending', 'completed', 'cancelled'],
+      order_status: [
+        'active',
+        'payment_pending',
+        'served',
+        'completed',
+        'cancelled',
+      ],
       payment_method: ['cash', 'stripe'],
       payment_status: ['created', 'accepted', 'pending', 'success', 'failed'],
       table_status: ['available', 'occupied', 'inactive'],

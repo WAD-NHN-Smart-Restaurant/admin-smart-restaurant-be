@@ -616,6 +616,16 @@ export class PaymentsService {
     tableId: string,
   ): Promise<void> {
     await this.ordersRepository.updateOrderStatus(orderId, 'completed');
-    this.ordersGateway.emitOrderStatusUpdate(tableId, orderId, 'completed');
+    const order = await this.ordersRepository.getOrderWithTable(orderId);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    const restaurantId = order.tables.restaurant_id;
+    this.ordersGateway.emitOrderStatusUpdate(
+      restaurantId,
+      tableId,
+      orderId,
+      'completed',
+    );
   }
 }

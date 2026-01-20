@@ -18,6 +18,8 @@ import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
 import { UpdateTableStatusDto } from './dto/update-table-status.dto';
 import { QueryTablesDto } from './dto/query-tables.dto';
+import { AssignWaiterDto } from './dto/assign-waiter.dto';
+import { BulkAssignWaiterDto } from './dto/bulk-assign-waiter.dto';
 import { SupabaseJwtAuthGuard } from '../auth/guards/supabase-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -252,5 +254,45 @@ export class TablesController {
   async bulkRegenerateQrCodes() {
     const result = await this.tablesService.bulkRegenerateQRCodes();
     return result;
+  }
+
+  @Patch(':id/assign-waiter')
+  @ApiOperation({
+    summary: 'Assign a waiter to a table',
+    description:
+      'Assigns a waiter to a specific table. Set waiterId to null to unassign. Requires admin or super_admin role.',
+  })
+  @ApiParam({ name: 'id', description: 'Table UUID' })
+  @ApiBody({ type: AssignWaiterDto })
+  @ApiResponse({ status: 200, description: 'Waiter assigned successfully' })
+  @ApiResponse({ status: 404, description: 'Table not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async assignWaiter(
+    @Param('id') id: string,
+    @Body() assignWaiterDto: AssignWaiterDto,
+  ) {
+    return this.tablesService.assignWaiter(id, assignWaiterDto.waiter_id);
+  }
+
+  @Patch('bulk-assign-waiter')
+  @ApiOperation({
+    summary: 'Bulk assign a waiter to multiple tables',
+    description:
+      'Assigns a waiter to multiple tables at once. Set waiterId to null to unassign. Requires admin or super_admin role.',
+  })
+  @ApiBody({ type: BulkAssignWaiterDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Waiter assigned to tables successfully',
+  })
+  @ApiResponse({ status: 404, description: 'One or more tables not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async bulkAssignWaiter(@Body() bulkAssignDto: BulkAssignWaiterDto) {
+    return this.tablesService.bulkAssignWaiter(
+      bulkAssignDto.table_ids,
+      bulkAssignDto.waiter_id,
+    );
   }
 }
