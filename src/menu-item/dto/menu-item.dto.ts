@@ -11,6 +11,7 @@ import {
   MinLength,
   MaxLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum MenuItemStatus {
@@ -201,6 +202,7 @@ export class MenuItemQueryDto {
     minimum: 1,
     default: 1,
   })
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @IsOptional()
@@ -213,6 +215,7 @@ export class MenuItemQueryDto {
     maximum: 100,
     default: 20,
   })
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @Max(100)
