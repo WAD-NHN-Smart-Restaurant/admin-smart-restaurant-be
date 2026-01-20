@@ -22,6 +22,18 @@ interface OrderItemWithOptions extends OrderItem {
 interface OrderItemToInsert extends Omit<OrderItemInsert, 'id' | 'created_at'> {
   originalItem: OrderItemDto;
 }
+// Type definitions for joined relations
+type MenuItemJoin = { name: string } | null;
+type ModifierOptionJoin = { name: string } | null;
+
+type OrderItemWithJoins = Database['public']['Tables']['order_items']['Row'] & {
+  menu_items?: MenuItemJoin;
+  order_item_options?: Array<
+    Database['public']['Tables']['order_item_options']['Row'] & {
+      modifier_options?: ModifierOptionJoin;
+    }
+  >;
+};
 
 @Injectable()
 export class OrdersRepository {
@@ -82,6 +94,38 @@ export class OrdersRepository {
       .maybeSingle();
 
     if (error) throw mapSqlError(error);
+    if (!data) return data;
+
+    // Transform nested relations for order_items
+    if (data.order_items && Array.isArray(data.order_items)) {
+      const items = data.order_items as unknown as OrderItemWithJoins[];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      data.order_items = items.map((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const menuItem = item.menu_items as any;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const menuItemName = menuItem?.name || null;
+        return {
+          ...item,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          menu_item_name: menuItemName,
+          order_item_options: (item.order_item_options || []).map((opt) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            const modOption = (opt as any).modifier_options;
+            return {
+              ...opt,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              option_name: modOption?.name || null,
+            };
+          }),
+        };
+      }) as any;
+    } else {
+      // Ensure order_items is always an array, even if empty
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      (data as any).order_items = [];
+    }
+
     return data;
   }
 
@@ -108,6 +152,33 @@ export class OrdersRepository {
       .maybeSingle();
 
     if (error) throw mapSqlError(error);
+
+    // Transform nested relations
+    if (data && data.order_items) {
+      const items = data.order_items as unknown as OrderItemWithJoins[];
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      data.order_items = items.map((item) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const menuItem = item.menu_items as any;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const menuItemName = menuItem?.name || null;
+        return {
+          ...item,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          menu_item_name: menuItemName,
+          order_item_options: (item.order_item_options || []).map((opt) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            const modOption = (opt as any).modifier_options;
+            return {
+              ...opt,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              option_name: modOption?.name || null,
+            };
+          }),
+        };
+      }) as any;
+    }
+
     return data;
   }
 

@@ -94,6 +94,32 @@ export class OrdersController {
   }
 
   /**
+   * Guest: Cancel bill request (change status back to served)
+   * POST /guest/cancel-bill
+   */
+  @Post('guest/cancel-bill')
+  @UseGuards(QrTokenGuard)
+  async cancelBill(
+    @Request()
+    req: ExpressRequest & {
+      user: { tableId: string; restaurantId: string };
+    },
+  ) {
+    const { tableId, restaurantId } = req.user;
+
+    const order = await this.ordersService.cancelBillRequest(
+      tableId,
+      restaurantId,
+    );
+
+    return {
+      status: true,
+      data: order,
+      message: 'Bill request cancelled',
+    };
+  }
+
+  /**
    * Guest: Call waiter
    * POST /guest/call-waiter
    */

@@ -17,6 +17,7 @@ interface QrTokenPayload {
 
 interface RequestWithQrToken extends Request {
   qrToken?: QrTokenPayload & { token: string };
+  user?: QrTokenPayload;
 }
 
 /**
@@ -49,7 +50,10 @@ export class QrTokenGuard implements CanActivate {
         ...decoded,
         token: token,
       };
-      
+
+      // Also attach to req.user for compatibility with controllers expecting user object
+      request.user = decoded;
+
       return true;
     } catch (error) {
       if (error instanceof BadRequestException) {

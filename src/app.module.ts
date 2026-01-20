@@ -13,6 +13,7 @@ import { BillsModule } from './bills/bills.module';
 import { OrdersModule } from './orders/orders.module';
 import { HealthController } from './common/health.controller';
 import { ProfilesModule } from './profiles/profiles.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { ProfilesModule } from './profiles/profiles.module';
     BillsModule,
     OrdersModule,
     ProfilesModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
 })
