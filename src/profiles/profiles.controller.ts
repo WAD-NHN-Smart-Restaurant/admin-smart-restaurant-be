@@ -203,4 +203,80 @@ export class ProfilesController {
   ) {
     return this.profilesService.deleteAvatar(id, user.id);
   }
+
+  @Put(':id/phone')
+  @ApiOperation({
+    summary: 'Update user phone number',
+    description:
+      'Updates phone number in user profile. Users can only update their own phone number.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'User ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        phone_number: {
+          type: 'string',
+          example: '+1234567890',
+          description: 'Phone number in E.164 format',
+        },
+      },
+      required: ['phone_number'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Phone number updated successfully',
+    type: ProfileResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - invalid phone number format',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - can only update own phone number',
+  })
+  async updatePhoneNumber(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body('phone_number') phoneNumber: string,
+  ) {
+    return this.profilesService.updatePhoneNumber(id, user.id, phoneNumber);
+  }
+
+  @Get('restaurant/:restaurantId/role/:role')
+  @ApiOperation({
+    summary: 'Get users by role',
+    description:
+      'Retrieves all users in a restaurant with a specific role. Requires authentication.',
+  })
+  @ApiParam({
+    name: 'restaurantId',
+    description: 'Restaurant ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiParam({
+    name: 'role',
+    description: 'User role',
+    enum: ['waiter', 'kitchen_staff', 'admin', 'super_admin'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Users retrieved successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - authentication required',
+  })
+  async getUsersByRole(
+    @Param('restaurantId') restaurantId: string,
+    @Param('role') role: string,
+  ) {
+    return this.profilesService.getUsersByRole(restaurantId, role);
+  }
 }

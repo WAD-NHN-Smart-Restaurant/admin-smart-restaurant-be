@@ -69,9 +69,7 @@ export class ProfilesService {
       }
 
       // Determine folder based on user role
-      const role = profile.role || 'customer';
-      const folder =
-        role === 'customer' ? 'avatars/customers' : 'avatars/admins';
+      const folder = `avatars/${profile.role}s/${userId}`;
 
       // Upload new avatar to R2
       const { url, key } = await this.storageService.uploadFile(file, folder);
@@ -114,6 +112,39 @@ export class ProfilesService {
       this.logger.error(`Failed to delete avatar: ${error.message}`);
       throw new BadRequestException(
         `Failed to delete avatar: ${error.message}`,
+      );
+    }
+  }
+
+  async updatePhoneNumber(
+    userId: string,
+    requestUserId: string,
+    phoneNumber: string,
+  ) {
+    // Ensure user can only update their own phone number
+    if (userId !== requestUserId) {
+      throw new ForbiddenException('You can only update your own phone number');
+    }
+
+    try {
+      return await this.profilesRepository.updateProfile(userId, {
+        phone_number: phoneNumber,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to update phone number: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to update phone number: ${error.message}`,
+      );
+    }
+  }
+
+  async getUsersByRole(restaurantId: string, role: string) {
+    try {
+      return await this.profilesRepository.getUsersByRole(restaurantId, role);
+    } catch (error) {
+      this.logger.error(`Failed to get users by role: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to get users by role: ${error.message}`,
       );
     }
   }

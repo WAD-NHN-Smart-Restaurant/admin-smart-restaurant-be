@@ -246,6 +246,7 @@ export class AuthRepository {
     });
 
     if (error) throw mapSqlError(error);
+    console.log('Password updated successfully for user:', data.user?.id);
     return data;
   }
 
@@ -283,6 +284,30 @@ export class AuthRepository {
     const { data, error } = await this.supabase.auth.resend({
       type: 'signup',
       email,
+    });
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
+   * Update user email
+   */
+  async updateEmail(email: string) {
+    const { data, error } = await this.supabase.auth.updateUser({
+      email,
+    });
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
+   * Update user phone number
+   */
+  async updatePhoneNumber(phone: string) {
+    const { data, error } = await this.supabase.auth.updateUser({
+      phone,
     });
 
     if (error) throw mapSqlError(error);

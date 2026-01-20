@@ -25,9 +25,11 @@ export class RequestInterceptor implements NestInterceptor {
 
     // Skip transformation for guest order endpoints (already in camelCase from frontend)
     const isGuestOrderEndpoint = request.url?.includes('/orders/guest');
+    const isGuestPaymentEndpoint = request.url?.includes('/payments/guest');
 
     if (
       !isGuestOrderEndpoint &&
+      !isGuestPaymentEndpoint &&
       request.body &&
       typeof request.body === 'object'
     ) {

@@ -409,29 +409,47 @@ export type Database = {
       payments: {
         Row: {
           amount: number;
+          checkout_url: string | null;
           created_at: string;
+          currency: string | null;
+          discount_amount: number;
+          discount_rate: number;
           id: string;
+          metadata: Json | null;
           order_id: string;
           payment_method: string | null;
           status: string | null;
+          stripe_session_id: string | null;
           updated_at: string;
         };
         Insert: {
           amount: number;
+          checkout_url?: string | null;
           created_at?: string;
+          currency?: string | null;
+          discount_amount?: number;
+          discount_rate?: number;
           id?: string;
+          metadata?: Json | null;
           order_id: string;
           payment_method?: string | null;
           status?: string | null;
+          stripe_session_id?: string | null;
           updated_at?: string;
         };
         Update: {
           amount?: number;
+          checkout_url?: string | null;
           created_at?: string;
+          currency?: string | null;
+          discount_amount?: number;
+          discount_rate?: number;
           id?: string;
+          metadata?: Json | null;
           order_id?: string;
           payment_method?: string | null;
           status?: string | null;
+          stripe_session_id?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -450,6 +468,7 @@ export type Database = {
           created_at: string;
           full_name: string | null;
           id: string;
+          is_active: boolean;
           phone_number: string | null;
           restaurant_id: string | null;
           role: Database['public']['Enums']['user_role'] | null;
@@ -461,6 +480,7 @@ export type Database = {
           created_at?: string;
           full_name?: string | null;
           id: string;
+          is_active?: boolean;
           phone_number?: string | null;
           restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
@@ -472,6 +492,7 @@ export type Database = {
           created_at?: string;
           full_name?: string | null;
           id?: string;
+          is_active?: boolean;
           phone_number?: string | null;
           restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
@@ -509,8 +530,65 @@ export type Database = {
         };
         Relationships: [];
       };
+      reviews: {
+        Row: {
+          comment: string | null;
+          created_at: string;
+          customer_id: string;
+          id: string;
+          menu_item_id: string;
+          order_id: string;
+          rating: number;
+          updated_at: string;
+        };
+        Insert: {
+          comment?: string | null;
+          created_at?: string;
+          customer_id: string;
+          id?: string;
+          menu_item_id: string;
+          order_id: string;
+          rating: number;
+          updated_at?: string;
+        };
+        Update: {
+          comment?: string | null;
+          created_at?: string;
+          customer_id?: string;
+          id?: string;
+          menu_item_id?: string;
+          order_id?: string;
+          rating?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reviews_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_menu_item_id_fkey';
+            columns: ['menu_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       tables: {
         Row: {
+          assigned_at: string | null;
+          assigned_waiter_id: string | null;
           capacity: number;
           created_at: string;
           description: string | null;
@@ -524,6 +602,8 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          assigned_at?: string | null;
+          assigned_waiter_id?: string | null;
           capacity: number;
           created_at?: string;
           description?: string | null;
@@ -537,6 +617,8 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          assigned_at?: string | null;
+          assigned_waiter_id?: string | null;
           capacity?: number;
           created_at?: string;
           description?: string | null;
@@ -555,6 +637,13 @@ export type Database = {
             columns: ['restaurant_id'];
             isOneToOne: false;
             referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tables_assigned_waiter_id_fkey';
+            columns: ['assigned_waiter_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
         ];
@@ -581,7 +670,13 @@ export type Database = {
         | 'ready'
         | 'served';
       order_status: 'active' | 'payment_pending' | 'completed' | 'cancelled';
-      payment_method: 'cash' | 'zalopay' | 'momo' | 'vnpay' | 'stripe';
+      payment_method:
+        | 'cash'
+        | 'zalopay'
+        | 'momo'
+        | 'vnpay'
+        | 'stripe'
+        | 'payos';
       payment_status: 'pending' | 'success' | 'failed';
       table_status: 'available' | 'occupied' | 'inactive';
       user_role:
@@ -730,7 +825,7 @@ export const Constants = {
         'served',
       ],
       order_status: ['active', 'payment_pending', 'completed', 'cancelled'],
-      payment_method: ['cash', 'zalopay', 'momo', 'vnpay', 'stripe'],
+      payment_method: ['cash', 'zalopay', 'momo', 'vnpay', 'stripe', 'payos'],
       payment_status: ['pending', 'success', 'failed'],
       table_status: ['available', 'occupied', 'inactive'],
       user_role: [
