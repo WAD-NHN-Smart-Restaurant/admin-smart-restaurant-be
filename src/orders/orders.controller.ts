@@ -13,6 +13,7 @@ import {
 import { OrdersService } from './orders.service';
 import { OrdersGateway } from '../gateways/orders.gateway';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateReviewDto } from './dto/create-review.dto';
 import { Request as ExpressRequest } from 'express';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
 import { SupabaseJwtAuthGuard } from '../auth/guards/supabase-jwt-auth.guard';
@@ -293,5 +294,149 @@ export class OrdersController {
     );
 
     return data;
+  }
+
+  /**
+   * Customer: Get order history
+   * GET /customer/history
+   */
+  @Get('customer/history')
+  @UseGuards(SupabaseJwtAuthGuard)
+  async getCustomerOrderHistory(
+    @Request() req: ExpressRequest & { user: { id: string } },
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    const customerId = req.user.id;
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const offset = (pageNum - 1) * limitNum;
+
+    const result = await this.ordersService.getCustomerOrderHistory(
+      customerId,
+      limitNum,
+      offset,
+    );
+
+    return {
+      status: true,
+      data: result.data,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: result.count,
+      },
+    };
+  }
+
+  /**
+   * Customer: Create a review for a menu item
+   * POST /customer/reviews
+   */
+  @Post('customer/reviews')
+  @UseGuards(SupabaseJwtAuthGuard)
+  async createReview(
+    @Request() req: ExpressRequest & { user: { id: string } },
+    @Body() createReviewDto: CreateReviewDto,
+  ) {
+    const customerId = req.user.id;
+    const { menuItemId, orderId, rating, comment } = createReviewDto;
+
+    const review = await this.ordersService.createReview(
+      customerId,
+      menuItemId,
+      orderId,
+      rating,
+      comment,
+    );
+
+    return {
+      status: true,
+      data: review,
+      message: 'Review created successfully',
+    };
+  }
+
+  /**
+   * Customer: Get my reviews
+   * GET /customer/reviews
+   */
+  @Get('customer/reviews')
+  @UseGuards(SupabaseJwtAuthGuard)
+  async getCustomerReviews(
+    @Request() req: ExpressRequest & { user: { id: string } },
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    const customerId = req.user.id;
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const offset = (pageNum - 1) * limitNum;
+
+    const result = await this.ordersService.getCustomerReviews(
+      customerId,
+      limitNum,
+      offset,
+    );
+
+    return {
+      status: true,
+      data: result.data,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: result.count,
+      },
+    };
+  }
+
+  /**
+   * Customer: Get order details with item processing statuses
+   * GET /customer/orders/:id
+   */
+  @Get('customer/:id')
+  @UseGuards(SupabaseJwtAuthGuard)
+  async getCustomerOrderDetails(
+    @Request() req: ExpressRequest & { user: { id: string } },
+    @Param('id') orderId: string,
+  ) {
+    const customerId = req.user.id;
+    const order = await this.ordersService.getOrderDetails(orderId, customerId);
+
+    return {
+      status: true,
+      data: order,
+    };
+  }
+
+  /**
+   * Get reviews for a menu item (public)
+   * GET /menu-items/:id/reviews
+   */
+  @Get('menu-items/:id/reviews')
+  async getMenuItemReviews(
+    @Param('id') menuItemId: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+  ) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const offset = (pageNum - 1) * limitNum;
+
+    const result = await this.ordersService.getMenuItemReviews(
+      menuItemId,
+      limitNum,
+      offset,
+    );
+
+    return {
+      status: true,
+      data: result.data,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: result.count,
+      },
+    };
   }
 }
