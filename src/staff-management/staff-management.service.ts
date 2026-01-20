@@ -143,23 +143,23 @@ export class StaffManagementService {
 
     // Prepare update data - map DTO fields to database columns
     const updateData: {
-      fullName?: string;
-      phoneNumber?: string;
-      avatarUrl?: string;
-      isActive?: boolean;
+      full_name?: string;
+      phone_number?: string;
+      avatar_url?: string;
+      is_active?: boolean;
     } = {};
 
     if (dto.name !== undefined) {
-      updateData.fullName = dto.name;
+      updateData.full_name = dto.name;
     }
     if (dto.phoneNumber !== undefined) {
-      updateData.phoneNumber = dto.phoneNumber;
+      updateData.phone_number = dto.phoneNumber;
     }
     if (dto.avatarUrl !== undefined) {
-      updateData.avatarUrl = dto.avatarUrl;
+      updateData.avatar_url = dto.avatarUrl;
     }
     if (dto.isActive !== undefined) {
-      updateData.isActive = dto.isActive;
+      updateData.is_active = dto.isActive;
     }
 
     // Update staff profile

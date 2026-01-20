@@ -669,14 +669,15 @@ export type Database = {
         | 'preparing'
         | 'ready'
         | 'served';
-      order_status:
-        | 'active'
-        | 'served'
-        | 'payment_pending'
-        | 'completed'
-        | 'cancelled';
-      payment_method: 'cash' | 'stripe';
-      payment_status: 'created' | 'accepted' | 'pending' | 'success' | 'failed';
+      order_status: 'active' | 'payment_pending' | 'completed' | 'cancelled';
+      payment_method:
+        | 'cash'
+        | 'zalopay'
+        | 'momo'
+        | 'vnpay'
+        | 'stripe'
+        | 'payos';
+      payment_status: 'pending' | 'success' | 'failed';
       table_status: 'available' | 'occupied' | 'inactive';
       user_role:
         | 'super_admin'
@@ -823,15 +824,9 @@ export const Constants = {
         'ready',
         'served',
       ],
-      order_status: [
-        'active',
-        'payment_pending',
-        'served',
-        'completed',
-        'cancelled',
-      ],
-      payment_method: ['cash', 'stripe'],
-      payment_status: ['created', 'accepted', 'pending', 'success', 'failed'],
+      order_status: ['active', 'payment_pending', 'completed', 'cancelled'],
+      payment_method: ['cash', 'zalopay', 'momo', 'vnpay', 'stripe', 'payos'],
+      payment_status: ['pending', 'success', 'failed'],
       table_status: ['available', 'occupied', 'inactive'],
       user_role: [
         'super_admin',

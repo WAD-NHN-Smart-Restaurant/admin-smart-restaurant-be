@@ -93,10 +93,10 @@ export class StaffManagementRepository {
     staffId: string,
     restaurantId: string,
     updateData: {
-      fullName?: string;
-      phoneNumber?: string;
-      avatarUrl?: string;
-      isActive?: boolean;
+      full_name?: string;
+      phone_number?: string;
+      avatar_url?: string;
+      is_active?: boolean;
     },
   ) {
     // First check if staff exists and belongs to restaurant
