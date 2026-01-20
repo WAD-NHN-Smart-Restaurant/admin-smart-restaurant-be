@@ -134,6 +134,17 @@ export class ProfilesService {
       this.logger.error(`Failed to update phone number: ${error.message}`);
       throw new BadRequestException(
         `Failed to update phone number: ${error.message}`,
+     );
+    }
+  }
+  
+  async getUsersByRole(restaurantId: string, role: string) {
+    try {
+      return await this.profilesRepository.getUsersByRole(restaurantId, role);
+    } catch (error) {
+      this.logger.error(`Failed to get users by role: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to get users by role: ${error.message}`,
       );
     }
   }
