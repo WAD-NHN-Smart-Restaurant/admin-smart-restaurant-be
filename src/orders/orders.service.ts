@@ -12,11 +12,16 @@ import { TablesRepository } from '../tables/tables.repository';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../utils/const';
 import { Database } from '../supabase/supabase.types';
+import { PaymentsService } from '../payments/payments.service';
+import { PaymentRow } from '../payments/payments.repository';
 
 type OrderItemOptionRow =
-  Database['public']['Tables']['order_item_options']['Row'];
+  Database['public']['Tables']['order_item_options']['Row'] & {
+    modifier_options?: { name: string | null } | null;
+  };
 type OrderItemRow = Database['public']['Tables']['order_items']['Row'] & {
   order_item_options?: OrderItemOptionRow[];
+  menu_items?: { name: string | null } | null;
 };
 type OrderRow = Database['public']['Tables']['orders']['Row'] & {
   order_items?: OrderItemRow[];
@@ -30,6 +35,7 @@ export class OrdersService {
     @Inject(SUPABASE) private readonly supabase: SupabaseClient<Database>,
     @Inject(forwardRef(() => OrdersGateway))
     private readonly ordersGateway: OrdersGateway,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   /**
@@ -132,13 +138,13 @@ export class OrdersService {
   /**
    * Transform order response to flatten nested relations
    */
-  private transformOrderResponse(order: any) {
+  private transformOrderResponse(order: OrderRow | null) {
     if (!order) return null;
 
     return {
       ...order,
       orderItems:
-        order.order_items?.map((item: any) => ({
+        order.order_items?.map((item: OrderItemRow) => ({
           id: item.id,
           orderId: item.order_id,
           menuItemId: item.menu_item_id,
@@ -151,7 +157,7 @@ export class OrdersService {
           updatedAt: item.updated_at,
           totalPrice: item.total_price,
           orderItemOptions:
-            item.order_item_options?.map((opt: any) => ({
+            item.order_item_options?.map((opt: OrderItemOptionRow) => ({
               id: opt.id,
               orderItemId: opt.order_item_id,
               modifierOptionId: opt.modifier_option_id,
@@ -178,7 +184,7 @@ export class OrdersService {
   }
 
   /**
-   * Request bill (change order status to payment_pending)
+   * Request bill (change order status to payment_pending and create initial payment)
    */
   async requestBill(tableId: string, restaurantId: string) {
     const order = await this.ordersRepository.getActiveOrderByTable(tableId);
@@ -186,6 +192,12 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('No active order found for this table');
     }
+
+    // Create initial payment record with status 'pending'
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const payment: PaymentRow =
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      await this.paymentsService.createInitialPaymentRecord(order.id);
 
     const updatedOrder = await this.ordersRepository.updateOrderStatus(
       order.id,
@@ -201,7 +213,10 @@ export class OrdersService {
       'payment_pending',
     );
 
-    return updatedOrder;
+    return {
+      ...updatedOrder,
+      payment,
+    };
   }
 
   /**

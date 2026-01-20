@@ -3,6 +3,7 @@ import {
   Controller,
   Param,
   Post,
+  Get,
   Request,
   UseGuards,
   Req,
@@ -49,6 +50,34 @@ export class PaymentsController {
   }
 
   /**
+   * Guest: get payment status by payment ID
+   */
+  @Get('guest/:paymentId')
+  @UseGuards(QrTokenGuard)
+  async getPaymentStatus(@Param('paymentId') paymentId: string) {
+    const result = await this.paymentsService.getPaymentStatus(paymentId);
+
+    return {
+      status: true,
+      data: result,
+    };
+  }
+
+  /**
+   * Guest: get payment by order ID
+   */
+  @Get('guest/order/:orderId')
+  @UseGuards(QrTokenGuard)
+  async getPaymentByOrderId(@Param('orderId') orderId: string) {
+    const result = await this.paymentsService.getPaymentByOrderId(orderId);
+
+    return {
+      status: true,
+      data: result,
+    };
+  }
+
+  /**
    * Guest: confirm payment (for cash or after online payment)
    */
   @Post('guest/:paymentId/confirm')
@@ -69,6 +98,27 @@ export class PaymentsController {
       status: true,
       data: result,
       message: 'Payment status updated',
+    };
+  }
+
+  /**
+   * Admin/Waiter: Accept payment request and apply discount
+   */
+  @Post('admin/:paymentId/accept')
+  async acceptPaymentWithDiscount(
+    @Param('paymentId') paymentId: string,
+    @Body() body: { discountRate?: number; discountAmount?: number },
+  ) {
+    const result = await this.paymentsService.acceptPaymentWithDiscount(
+      paymentId,
+      body.discountRate || 0,
+      body.discountAmount || 0,
+    );
+
+    return {
+      status: true,
+      data: result,
+      message: 'Payment accepted and discount applied',
     };
   }
 

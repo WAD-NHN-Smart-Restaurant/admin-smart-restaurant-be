@@ -613,7 +613,7 @@ export type Database = {
         | 'completed'
         | 'cancelled';
       payment_method: 'cash' | 'stripe';
-      payment_status: 'accepted' | 'pending' | 'success' | 'failed';
+      payment_status: 'created' | 'accepted' | 'pending' | 'success' | 'failed';
       table_status: 'available' | 'occupied' | 'inactive';
       user_role:
         | 'super_admin'
@@ -768,7 +768,7 @@ export const Constants = {
         'cancelled',
       ],
       payment_method: ['cash', 'stripe'],
-      payment_status: ['accepted', 'pending', 'success', 'failed'],
+      payment_status: ['created', 'accepted', 'pending', 'success', 'failed'],
       table_status: ['available', 'occupied', 'inactive'],
       user_role: [
         'super_admin',

@@ -5,12 +5,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { OrdersRepository } from '../orders/orders.repository';
-import { PaymentsRepository } from './payments.repository';
+import { OrdersGateway } from '../orders/orders.gateway';
+import { PaymentsRepository, PaymentRow } from './payments.repository';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { StripeService } from './stripe/stripe.service';
-import { Database } from '../supabase/supabase.types';
-import { OrdersGateway } from 'src/gateways/orders.gateway';
+import { Database, Json } from '../supabase/supabase.types';
 
 // Table/Order type aliases
 type OrderItemOptionRow =
@@ -32,6 +32,89 @@ export class PaymentsService {
     private readonly ordersGateway: OrdersGateway,
     private readonly stripeService: StripeService,
   ) {}
+
+  /**
+   * Create initial payment record when customer requests bill
+   * This creates a payment with only order_id, status is 'created' (waiting for waiter to accept and apply discount)
+   */
+  async createInitialPaymentRecord(orderId: string): Promise<PaymentRow> {
+    const payment = await this.paymentsRepository.createPayment({
+      orderId,
+      status: 'created',
+    });
+
+    this.logger.log(
+      `Initial payment record created: ${payment.id} for order: ${orderId}`,
+    );
+    return payment;
+  }
+
+  /**
+   * Get payment status
+   */
+  async getPaymentStatus(paymentId: string): Promise<PaymentRow> {
+    const payment = await this.paymentsRepository.findById(paymentId);
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    return payment;
+  }
+
+  /**
+   * Get payment by order ID
+   */
+  async getPaymentByOrderId(orderId: string): Promise<PaymentRow> {
+    const payment = await this.paymentsRepository.findByOrderId(orderId);
+    if (!payment) {
+      throw new NotFoundException('Payment not found for this order');
+    }
+    return payment;
+  }
+
+  /**
+   * Accept payment request and apply discount (called by waiter/admin)
+   */
+  async acceptPaymentWithDiscount(
+    paymentId: string,
+    discountRate: number,
+    discountAmount: number,
+  ): Promise<PaymentRow> {
+    const payment = await this.paymentsRepository.findById(paymentId);
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    if (payment.status !== 'created') {
+      throw new BadRequestException('Payment is not in created status');
+    }
+
+    let effectiveDiscountAmount = discountAmount;
+    if (!effectiveDiscountAmount || effectiveDiscountAmount === 0) {
+      // Calculate discount_amount from order total when not provided
+      const order = await this.ordersRepository.getOrderById(payment.order_id);
+      if (order) {
+        const orderTotal = this.calculateOrderTotal(order as OrderRow);
+        effectiveDiscountAmount =
+          Math.round(orderTotal * (discountRate / 100) * 100) / 100;
+      }
+    }
+
+    // Update payment to accepted with discount values
+    const updatedPayment = await this.paymentsRepository.updatePayment(
+      paymentId,
+      {
+        status: 'accepted',
+        discount_rate: discountRate,
+        discount_amount: effectiveDiscountAmount,
+      },
+    );
+
+    this.logger.log(
+      `Payment ${paymentId} accepted with discount: ${discountRate}% / ${discountAmount}`,
+    );
+
+    return updatedPayment;
+  }
 
   /**
    * Initiate payment based on method
@@ -63,6 +146,7 @@ export class PaymentsService {
 
   /**
    * Pay at counter (cash payment)
+   * Updates existing payment from 'accepted' to 'pending'
    */
   async payAtCounter(
     tableId: string,
@@ -80,22 +164,43 @@ export class PaymentsService {
     // Update order total
     await this.ordersRepository.updateOrderTotal(order.id, orderTotal);
 
-    // Create payment record
-    const payment = await this.paymentsRepository.createPayment({
-      orderId: order.id,
-      amount: paymentAmount,
-      paymentMethod: 'cash',
-      status: 'pending',
-      currency: '$',
-      metadata: {
-        note: 'Customer will pay at counter - waiting for waiter confirmation',
-        orderTotal,
-        subtotalAfterDiscount: orderTotal - discountAmount,
-        discountAmount,
-        tax: (orderTotal - discountAmount) * 0.1,
-        tipAmount,
-      } as Record<string, unknown>,
-    });
+    // Find existing payment for this order
+    let payment = await this.paymentsRepository.findByOrderId(order.id);
+
+    if (!payment) {
+      // If no payment exists, create new one (fallback for old flow)
+      payment = await this.paymentsRepository.createPayment({
+        orderId: order.id,
+        amount: paymentAmount,
+        paymentMethod: 'cash',
+        status: 'pending',
+        currency: '$',
+        metadata: {
+          note: 'Customer will pay at counter - waiting for waiter confirmation',
+          orderTotal,
+          subtotalAfterDiscount: orderTotal - discountAmount,
+          discountAmount,
+          tax: (orderTotal - discountAmount) * 0.1,
+          tipAmount,
+        } as Record<string, unknown>,
+      });
+    } else {
+      // Update existing payment to pending with payment details
+      payment = await this.paymentsRepository.updatePayment(payment.id, {
+        amount: paymentAmount,
+        payment_method: 'cash',
+        status: 'pending',
+        currency: '$',
+        metadata: {
+          note: 'Customer will pay at counter - waiting for waiter confirmation',
+          orderTotal,
+          subtotalAfterDiscount: orderTotal - discountAmount,
+          discountAmount: payment.discount_amount || discountAmount,
+          tax: (orderTotal - (payment.discount_amount || discountAmount)) * 0.1,
+          tipAmount,
+        } as Json,
+      });
+    }
 
     this.logger.log(
       `Cash payment initiated: ${payment.id} - $${paymentAmount}`,
@@ -111,6 +216,7 @@ export class PaymentsService {
 
   /**
    * Create Stripe payment
+   * Updates existing payment from 'accepted' to 'pending' with Stripe details
    */
   async createStripePayment(
     tableId: string,
@@ -132,22 +238,44 @@ export class PaymentsService {
     // Generate order code
     const orderCode = this.generateOrderCode();
 
-    // Create payment record
-    const payment = await this.paymentsRepository.createPayment({
-      orderId: order.id,
-      amount: paymentAmount,
-      paymentMethod: 'stripe',
-      status: 'pending',
-      stripeSessionId: orderCode,
-      currency: '$',
-      metadata: {
-        orderTotal,
-        subtotalAfterDiscount: orderTotal - discountAmount,
-        discountAmount,
-        tax: (orderTotal - discountAmount) * 0.1,
-        tipAmount,
-      } as Record<string, unknown>,
-    });
+    // Find existing payment for this order
+    let payment = await this.paymentsRepository.findByOrderId(order.id);
+
+    if (!payment) {
+      // If no payment exists, create new one (fallback for old flow)
+      payment = await this.paymentsRepository.createPayment({
+        orderId: order.id,
+        amount: paymentAmount,
+        paymentMethod: 'stripe',
+        status: 'pending',
+        stripeSessionId: orderCode,
+        currency: '$',
+        metadata: {
+          orderTotal,
+          subtotalAfterDiscount: orderTotal - discountAmount,
+          discountAmount,
+          tax: (orderTotal - discountAmount) * 0.1,
+          tipAmount,
+        } as Record<string, unknown>,
+      });
+    } else {
+      // Update existing payment to pending with Stripe details
+      payment = await this.paymentsRepository.updatePayment(payment.id, {
+        amount: paymentAmount,
+        payment_method: 'stripe',
+        status: 'pending',
+        stripe_session_id: orderCode,
+        currency: '$',
+        metadata: {
+          orderTotal,
+          subtotalAfterDiscount:
+            orderTotal - (payment.discount_amount || discountAmount),
+          discountAmount: payment.discount_amount || discountAmount,
+          tax: (orderTotal - (payment.discount_amount || discountAmount)) * 0.1,
+          tipAmount,
+        } as Json,
+      });
+    }
 
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
@@ -234,10 +362,25 @@ export class PaymentsService {
       throw new BadRequestException('Payment does not belong to this table');
     }
 
+    const finalValues = this.buildFinalPaymentUpdate(
+      payment,
+      order as OrderRow,
+    );
+
     const updatedPayment = await this.paymentsRepository.updatePayment(
       payment.id,
       {
         status,
+        amount: finalValues.amount,
+        currency: finalValues.currency,
+        payment_method: finalValues.paymentMethod || payment.payment_method,
+        discount_amount: finalValues.discountAmount,
+        discount_rate: finalValues.discountRate,
+        metadata: {
+          ...(finalValues.metadata as Record<string, unknown>),
+          confirmedAt: new Date().toISOString(),
+          confirmationSource: 'guest',
+        } as unknown as Database['public']['Tables']['payments']['Update']['metadata'],
       },
     );
 
@@ -275,27 +418,50 @@ export class PaymentsService {
             await this.paymentsRepository.findByStripeSessionId(orderCode);
 
           if (payment) {
-            // Update payment status
-            await this.paymentsRepository.updatePayment(payment.id, {
-              status: 'success',
-              metadata: {
-                ...(typeof payment.metadata === 'object' &&
-                payment.metadata !== null
-                  ? (payment.metadata as Record<string, any>)
-                  : {}),
-                stripeSessionId: parsed.sessionId,
-              } as unknown as Database['public']['Tables']['payments']['Update']['metadata'],
-            });
-
-            // Complete order
+            // Complete order and sync final payment info
             const order = await this.ordersRepository.getOrderById(
               payment.order_id,
             );
             if (order) {
+              const finalValues = this.buildFinalPaymentUpdate(
+                payment,
+                order as OrderRow,
+              );
+
+              await this.paymentsRepository.updatePayment(payment.id, {
+                status: 'success',
+                amount: finalValues.amount,
+                currency: finalValues.currency,
+                payment_method:
+                  finalValues.paymentMethod || payment.payment_method,
+                discount_amount: finalValues.discountAmount,
+                discount_rate: finalValues.discountRate,
+                metadata: {
+                  ...(finalValues.metadata as Record<string, unknown>),
+                  stripeSessionId: parsed.sessionId,
+                  stripeEventType: eventType,
+                  webhookProcessedAt: new Date().toISOString(),
+                } as unknown as Database['public']['Tables']['payments']['Update']['metadata'],
+              });
+
               await this.ordersRepository.updateOrderStatus(
                 order.id,
                 'completed',
               );
+            } else {
+              // Fallback: still mark payment as successful with Stripe metadata
+              await this.paymentsRepository.updatePayment(payment.id, {
+                status: 'success',
+                metadata: {
+                  ...(typeof payment.metadata === 'object' &&
+                  payment.metadata !== null
+                    ? (payment.metadata as Record<string, unknown>)
+                    : {}),
+                  stripeSessionId: parsed.sessionId,
+                  stripeEventType: eventType,
+                  webhookProcessedAt: new Date().toISOString(),
+                } as unknown as Database['public']['Tables']['payments']['Update']['metadata'],
+              });
             }
 
             this.logger.log(`Stripe webhook processed: Payment ${payment.id}`);
@@ -312,6 +478,67 @@ export class PaymentsService {
   }
 
   // ============= HELPER METHODS =============
+
+  /**
+   * Consolidate final payment data (amount, discount, metadata)
+   */
+  private buildFinalPaymentUpdate(payment: PaymentRow, order: OrderRow) {
+    const baseMetadata =
+      typeof payment.metadata === 'object' && payment.metadata !== null
+        ? (payment.metadata as Record<string, unknown>)
+        : {};
+
+    const orderTotal = this.calculateOrderTotal(order);
+    const discountRate =
+      payment.discount_rate ??
+      (typeof baseMetadata.discountRate === 'number'
+        ? baseMetadata.discountRate
+        : Number(baseMetadata.discountRate) || 0);
+
+    const rawDiscountAmount =
+      payment.discount_amount ??
+      (typeof baseMetadata.discountAmount === 'number'
+        ? baseMetadata.discountAmount
+        : Number(baseMetadata.discountAmount) || 0);
+
+    const discountAmount =
+      rawDiscountAmount && rawDiscountAmount > 0
+        ? rawDiscountAmount
+        : Math.round(orderTotal * (discountRate / 100) * 100) / 100;
+
+    const tipAmount =
+      typeof baseMetadata.tipAmount === 'number'
+        ? baseMetadata.tipAmount
+        : Number(baseMetadata.tipAmount) || 0;
+
+    const amount = this.calculatePaymentAmount(
+      orderTotal,
+      tipAmount,
+      discountAmount,
+    );
+
+    const currency = payment.currency || '$';
+    const paymentMethod = payment.payment_method || null;
+    const tax =
+      Math.round(Math.max(0, orderTotal - discountAmount) * 0.1 * 100) / 100;
+
+    return {
+      amount,
+      currency,
+      paymentMethod,
+      discountAmount,
+      discountRate,
+      metadata: {
+        ...baseMetadata,
+        orderTotal,
+        subtotalAfterDiscount: Math.max(0, orderTotal - discountAmount),
+        discountAmount,
+        discountRate,
+        tax,
+        tipAmount,
+      } as Json,
+    };
+  }
 
   /**
    * Get payable order for table
