@@ -263,4 +263,290 @@ export class OrdersService {
 
     return updatedOrder;
   }
+
+  /**
+   * Get order history for a customer
+   */
+  async getCustomerOrderHistory(customerId: string, limit = 20, offset = 0) {
+    const { data, error, count } = await this.supabase
+      .from('orders')
+      .select(
+        `
+        id,
+        status,
+        total_amount,
+        guest_name,
+        created_at,
+        updated_at,
+        customer_id,
+        tables (
+          table_number
+        ),
+        order_items (
+          id
+        )
+      `,
+        { count: 'exact' },
+      )
+      .eq('customer_id', customerId)
+      .in('status', ['completed', 'cancelled'])
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error(
+        `[getCustomerOrderHistory] Error fetching orders for customer ${customerId}:`,
+        error,
+      );
+      throw new BadRequestException(error.message);
+    }
+
+    console.log(
+      `[getCustomerOrderHistory] Found ${data.length} orders for customer ${customerId}`,
+    );
+
+    return {
+      data: data.map((order) => ({
+        id: order.id,
+        tableNumber: order.tables?.table_number,
+        status: order.status,
+        totalAmount: order.total_amount,
+        guestName: order.guest_name,
+        createdAt: order.created_at,
+        completedAt: order.updated_at,
+        orderItemsCount: order.order_items?.length || 0,
+      })),
+      count: count || 0,
+    };
+  }
+
+  /**
+   * Get detailed order with item processing statuses
+   */
+  async getOrderDetails(orderId: string, customerId?: string) {
+    const { data: order, error } = await this.supabase
+      .from('orders')
+      .select(
+        `
+        id,
+        status,
+        total_amount,
+        guest_name,
+        created_at,
+        updated_at,
+        customer_id,
+        tables (
+          table_number
+        ),
+        order_items (
+          id,
+          quantity,
+          unit_price,
+          special_request,
+          status,
+          created_at,
+          menu_items (
+            id,
+            name,
+            description,
+            menu_item_photos (
+              url,
+              is_primary
+            )
+          ),
+          order_item_options (
+            id,
+            price_at_time,
+            modifier_options (
+              name
+            )
+          )
+        )
+      `,
+      )
+      .eq('id', orderId)
+      .single();
+
+    if (error || !order) {
+      console.error(
+        `[getOrderDetails] Error fetching order ${orderId}:`,
+        error,
+      );
+      throw new NotFoundException('Order not found');
+    }
+
+    // If customerId is provided, verify the order belongs to the customer or has no customer
+    if (customerId && order.customer_id && order.customer_id !== customerId) {
+      console.error(
+        `[getOrderDetails] Customer ${customerId} tried to access order ${orderId} owned by customer ${order.customer_id}`,
+      );
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
+  }
+
+  /**
+   * Create a review for a menu item
+   */
+  async createReview(
+    customerId: string,
+    menuItemId: string,
+    orderId: string,
+    rating: number,
+    comment?: string,
+  ) {
+    // Validate rating
+    if (rating < 1 || rating > 5) {
+      throw new BadRequestException('Rating must be between 1 and 5');
+    }
+
+    // Check if order belongs to customer and is completed
+    const { data: order, error: orderError } = await this.supabase
+      .from('orders')
+      .select('id, customer_id, status')
+      .eq('id', orderId)
+      .eq('customer_id', customerId)
+      .single();
+
+    if (orderError || !order) {
+      throw new BadRequestException(
+        'Order not found or does not belong to you',
+      );
+    }
+
+    if (order.status !== 'completed') {
+      throw new BadRequestException('You can only review completed orders');
+    }
+
+    // Check if the menu item was in this order
+    const { data: orderItem, error: itemError } = await this.supabase
+      .from('order_items')
+      .select('id')
+      .eq('order_id', orderId)
+      .eq('menu_item_id', menuItemId)
+      .single();
+
+    if (itemError || !orderItem) {
+      throw new BadRequestException(
+        'This menu item was not part of your order',
+      );
+    }
+
+    // Check if review already exists
+    const { data: existingReview } = await (this.supabase as any)
+      .from('reviews')
+      .select('id')
+      .eq('customer_id', customerId)
+      .eq('menu_item_id', menuItemId)
+      .eq('order_id', orderId)
+      .single();
+
+    if (existingReview) {
+      throw new BadRequestException(
+        'You have already reviewed this item for this order',
+      );
+    }
+
+    // Create review
+    const { data: review, error: reviewError } = await (this.supabase as any)
+      .from('reviews')
+      .insert({
+        customer_id: customerId,
+        menu_item_id: menuItemId,
+        order_id: orderId,
+        rating,
+        comment,
+      })
+      .select(
+        `
+        id,
+        rating,
+        comment,
+        created_at,
+        updated_at,
+        profiles (
+          full_name
+        ),
+        menu_items (
+          name
+        )
+      `,
+      )
+      .single();
+
+    if (reviewError) throw new BadRequestException(reviewError.message);
+
+    return review;
+  }
+
+  /**
+   * Get reviews for a menu item
+   */
+  async getMenuItemReviews(menuItemId: string, limit = 10, offset = 0) {
+    const { data, error, count } = await (this.supabase as any)
+      .from('reviews')
+      .select(
+        `
+        id,
+        rating,
+        comment,
+        created_at,
+        profiles (
+          full_name
+        )
+      `,
+        { count: 'exact' },
+      )
+      .eq('menu_item_id', menuItemId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw new BadRequestException(error.message);
+
+    return {
+      data,
+      count: count || 0,
+    };
+  }
+
+  /**
+   * Get customer's reviews
+   */
+  async getCustomerReviews(customerId: string, limit = 20, offset = 0) {
+    const { data, error, count } = await (this.supabase as any)
+      .from('reviews')
+      .select(
+        `
+        id,
+        rating,
+        comment,
+        created_at,
+        updated_at,
+        menu_items (
+          id,
+          name,
+          menu_item_photos (
+            url,
+            is_primary
+          )
+        ),
+        orders (
+          id,
+          created_at
+        )
+      `,
+        { count: 'exact' },
+      )
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw new BadRequestException(error.message);
+
+    return {
+      data,
+      count: count || 0,
+    };
+  }
 }
