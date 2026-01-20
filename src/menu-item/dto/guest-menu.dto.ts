@@ -94,4 +94,12 @@ export class GuestMenuQueryDto {
   @IsUUID()
   @IsOptional()
   table?: string;
+
+  @ApiPropertyOptional({
+    description: 'Table number (optional, extracted from QR token)',
+    example: 5,
+  })
+  @IsNumber()
+  @IsOptional()
+  tableNumber?: number;
 }

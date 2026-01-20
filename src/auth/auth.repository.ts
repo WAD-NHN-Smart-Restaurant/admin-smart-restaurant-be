@@ -9,8 +9,7 @@ export interface SignUpCredentials {
   email: string;
   password: string;
   name: string;
-  role?: string;
-  restaurantId?: UUID;
+  role?: Database['public']['Enums']['user_role'];
 }
 
 export interface SignInCredentials {
@@ -33,14 +32,20 @@ export class AuthRepository {
   /**
    * Sign up a new user with email and password
    */
-  async signUp(credentials: SignUpCredentials) {
-    const {
-      email,
-      password,
-      name,
-      role = 'customer',
-      restaurantId,
-    } = credentials;
+  async signUp(restaurantId: string | null, credentials: SignUpCredentials) {
+    const { email, password, name, role = 'customer' } = credentials;
+
+    // Validate that staff roles require restaurantId
+    const staffRoles = ['waiter', 'kitchen_staff'];
+    console.log('Restaurant ID in signUp:', restaurantId);
+    if (staffRoles.includes(role) && !restaurantId) {
+      throw new Error('restaurantId is required for staff roles');
+    }
+
+    const frontendUrl =
+      role === 'customer'
+        ? process.env.GUEST_CUSTOMER_FRONTEND_URL
+        : process.env.ADMIN_FRONTEND_URL;
 
     const { data, error } = await this.supabase.auth.signUp({
       email,
@@ -49,14 +54,26 @@ export class AuthRepository {
         data: {
           name,
           role,
-          restaurant_id: restaurantId,
         },
         //TODO: Replace with actual frontend URL
-        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/callback`,
+        emailRedirectTo: `${frontendUrl}/callback`,
       },
     });
 
     if (error) throw mapSqlError(error);
+
+    if (data.user) {
+      const { error: profileError } = await this.supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          full_name: name,
+          role,
+          restaurant_id: restaurantId,
+        });
+
+      if (profileError) throw mapSqlError(profileError);
+    }
     return data;
   }
 
@@ -115,22 +132,8 @@ export class AuthRepository {
   /**
    * Refresh session with refresh token
    */
-  async refreshSession(refreshToken: string) {
-    const { data, error } = await this.supabase.auth.refreshSession({
-      refresh_token: refreshToken,
-    });
-    if (error) throw mapSqlError(error);
-    return data;
-  }
-
-  /**
-   * Verify OTP for email confirmation
-   */
-  async verifyOtp(tokenHash: string, type: 'email' | 'signup' | 'magiclink') {
-    const { data, error } = await this.supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type,
-    });
+  async refreshSession() {
+    const { data, error } = await this.supabase.auth.refreshSession();
     if (error) throw mapSqlError(error);
     return data;
   }
@@ -141,10 +144,90 @@ export class AuthRepository {
   async resetPasswordForEmail(credentials: ResetPasswordCredentials) {
     const { email } = credentials;
 
+    let role: Database['public']['Enums']['user_role'] = 'customer';
+    let authUser: any = null;
+
+    // Try to find user by email with pagination
+    let page = 1;
+    const perPage = 1000;
+    let foundUser = false;
+
+    while (!foundUser) {
+      const { data: authData, error: listError } =
+        await this.supabase.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+
+      console.log(`Auth data retrieved for reset password (page ${page}):`, {
+        userCount: authData?.users?.length || 0,
+        total: authData?.users?.length || 0,
+      });
+
+      if (listError) {
+        console.error('Error listing users:', listError);
+        break;
+      }
+
+      if (!authData?.users || authData.users.length === 0) {
+        console.log('No more users to check');
+        break;
+      }
+
+      authUser = authData.users.find((user: any) => user.email === email);
+
+      if (authUser) {
+        console.log('Auth user found for email:', email);
+        foundUser = true;
+        break;
+      }
+
+      // If we got fewer results than perPage, we've reached the end
+      if (authData.users.length < perPage) {
+        console.log('Reached end of user list without finding user');
+        break;
+      }
+
+      page++;
+    }
+
+    if (authUser) {
+      // Try to get role from profiles table
+      const { data: profile } = await this.supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authUser.id)
+        .single();
+
+      console.log('Profile data for user:', profile);
+
+      if (profile && profile.role) {
+        role = profile.role;
+        console.log('Role found in profiles table:', profile.role);
+      } else if (authUser.user_metadata?.role) {
+        // Fallback to user metadata
+        role = authUser.user_metadata
+          .role as Database['public']['Enums']['user_role'];
+        console.log('Role found in user metadata:', role);
+      } else {
+        console.log('No role found, defaulting to customer');
+      }
+    } else {
+      console.log('User not found in auth system, defaulting to customer role');
+    }
+
+    const frontendUrl =
+      role === 'customer'
+        ? process.env.GUEST_CUSTOMER_FRONTEND_URL
+        : process.env.ADMIN_FRONTEND_URL;
+
+    console.log('Role determined for reset email:', role);
+    console.log('Frontend URL for reset email:', frontendUrl);
+
     const { data, error } = await this.supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${process.env.FRONTEND_URL}/auth/reset-password`,
+        redirectTo: `${frontendUrl}/reset-password`,
       },
     );
 
@@ -163,6 +246,7 @@ export class AuthRepository {
     });
 
     if (error) throw mapSqlError(error);
+    console.log('Password updated successfully for user:', data.user?.id);
     return data;
   }
 
@@ -182,12 +266,48 @@ export class AuthRepository {
   }
 
   /**
+   * Verify OTP for email confirmation
+   */
+  async verifyOtp(tokenHash: string, type: 'email' | 'signup' | 'magiclink') {
+    const { data, error } = await this.supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type,
+    });
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
    * Resend email confirmation
    */
   async resendEmailConfirmation(email: string) {
     const { data, error } = await this.supabase.auth.resend({
       type: 'signup',
       email,
+    });
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
+   * Update user email
+   */
+  async updateEmail(email: string) {
+    const { data, error } = await this.supabase.auth.updateUser({
+      email,
+    });
+
+    if (error) throw mapSqlError(error);
+    return data;
+  }
+
+  /**
+   * Update user phone number
+   */
+  async updatePhoneNumber(phone: string) {
+    const { data, error } = await this.supabase.auth.updateUser({
+      phone,
     });
 
     if (error) throw mapSqlError(error);

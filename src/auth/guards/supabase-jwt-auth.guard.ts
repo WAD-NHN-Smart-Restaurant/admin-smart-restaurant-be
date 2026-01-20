@@ -69,10 +69,24 @@ export class SupabaseJwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('User not found');
       }
 
-      // Extract role and restaurant_id from user metadata or JWT payload
-      const role = (payload.user_metadata as any)?.role ?? null;
-      const restaurantId =
-        (payload.user_metadata as any)?.restaurant_id ?? null;
+      const { data: memberData, error: memberError } = await this.supabase
+        .from('profiles')
+        .select('role, restaurant_id')
+        .eq('id', payload.sub)
+        .single();
+
+      console.log('Member data fetched in JWT guard:', {
+        memberData,
+        memberError,
+      });
+
+      if (memberError || !memberData) {
+        return true;
+        // throw new UnauthorizedException('User is not a restaurant member');
+      }
+
+      const role = memberData.role;
+      const restaurantId = memberData.restaurant_id;
 
       // Attach user to request
       request.user = {
@@ -95,6 +109,11 @@ export class SupabaseJwtAuthGuard implements CanActivate {
     const authHeader = request.headers?.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       return authHeader.substring(7);
+    }
+    // Also check cookies for access_token
+    const token = request.cookies?.access_token;
+    if (token) {
+      return token;
     }
     return null;
   }

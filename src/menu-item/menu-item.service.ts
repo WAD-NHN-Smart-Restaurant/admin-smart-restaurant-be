@@ -97,7 +97,6 @@ export class MenuItemService {
       updateDto,
     );
 
-    console.log('🔍 Debug - service updateMenuItem result', result);
     return result;
   }
 

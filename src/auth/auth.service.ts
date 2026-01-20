@@ -3,18 +3,28 @@ import {
   UnauthorizedException,
   BadRequestException,
   ConflictException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { UUID } from 'crypto';
+import { Database } from 'src/supabase/supabase.types';
+import { ref } from 'process';
+import { ProfilesService } from '../profiles/profiles.service';
 
 export interface SignUpDto {
   email: string;
   password: string;
   name: string;
-  role?: string;
-  restaurantId?: UUID;
+  role?: Database['public']['Enums']['user_role'];
+}
+
+export interface CustomerSignUpDto {
+  email: string;
+  password: string;
+  name: string;
 }
 
 export interface SignInDto {
@@ -48,6 +58,8 @@ export class AuthService {
   constructor(
     private authRepository: AuthRepository,
     private configService: ConfigService,
+    @Inject(forwardRef(() => ProfilesService))
+    private profilesService: ProfilesService,
   ) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     if (!supabaseUrl) {
@@ -84,14 +96,16 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
     }
-  } /**
+  }
+
+  /**
    * Register a new user
    * Returns user data with accessToken and tokens separately (tokens for HttpOnly cookies)
    */
-  async signUp(dto: SignUpDto) {
+  async signUp(restaurantId: string | null, dto: SignUpDto) {
     try {
-      const result = await this.authRepository.signUp(dto);
-      console.log('Signup Result:', result?.user?.user_metadata);
+      console.log('Restaurant ID in AuthService signUp:', restaurantId);
+      const result = await this.authRepository.signUp(restaurantId, dto);
 
       // Check if email confirmation is required
       const emailConfirmationRequired = !result.user?.email_confirmed_at;
@@ -127,7 +141,9 @@ export class AuthService {
       }
       throw new BadRequestException(error.message || 'Registration failed');
     }
-  } /**
+  }
+
+  /**
    * Sign in with email and password
    * Returns user data with accessToken and tokens separately (tokens for HttpOnly cookies)
    */
@@ -142,6 +158,33 @@ export class AuthService {
       // Verify the JWT token
       await this.verifySupabaseJWT(result.session.access_token);
 
+      // Fetch user profile
+      let profile = null;
+
+      // Check if user is staff (admin/waiter/kitchen_staff) and verify is_active status
+      const userRole = result.user.user_metadata?.role || 'customer';
+      const staffRoles = ['admin', 'waiter', 'kitchen_staff'];
+
+      if (staffRoles.includes(userRole)) {
+        profile = await this.profilesService.getProfile(result.user.id);
+        // Profile might not exist for some users, that's okay
+        if (!profile) {
+          throw new UnauthorizedException('Unable to verify account status');
+        }
+
+        // Check if staff account is deactivated
+        if (profile && profile.is_active === false) {
+          // Sign out the user immediately
+          await this.authRepository['supabase'].auth.admin.signOut(
+            result.session.access_token,
+            'global',
+          );
+          throw new UnauthorizedException(
+            'Your account has been deactivated. Please contact your administrator.',
+          );
+        }
+      }
+
       return {
         success: true,
         message: 'Login successful',
@@ -155,7 +198,16 @@ export class AuthService {
             createdAt: result.user.created_at,
             updatedAt: result.user.updated_at,
           },
+          profile: profile
+            ? {
+                full_name: profile.full_name,
+                phone_number: profile.phone_number,
+                avatar_url: profile.avatar_url,
+                role: profile.role,
+              }
+            : null,
           accessToken: result.session.access_token,
+          refreshToken: result.session.refresh_token,
         },
         // Return tokens separately so controller can set as HttpOnly cookies
         tokens: {
@@ -190,9 +242,9 @@ export class AuthService {
   /**
    * Refresh access token
    */
-  async refreshToken(dto: RefreshTokenDto) {
+  async refreshToken() {
     try {
-      const result = await this.authRepository.refreshSession(dto.refreshToken);
+      const result = await this.authRepository.refreshSession();
 
       if (!result.session) {
         throw new UnauthorizedException('Invalid refresh token');
@@ -222,6 +274,15 @@ export class AuthService {
 
       const user = await this.authRepository.getUser(accessToken);
 
+      // Fetch user profile
+      let profile = null;
+      try {
+        profile = await this.profilesService.getProfile(user.id);
+      } catch (error) {
+        // Profile might not exist for some users, that's okay
+        console.warn(`Profile not found for user ${user.id}`);
+      }
+
       return {
         success: true,
         data: {
@@ -232,12 +293,22 @@ export class AuthService {
           avatar: user.user_metadata?.avatar,
           createdAt: user.created_at,
           updatedAt: user.updated_at,
+          profile: profile
+            ? {
+                full_name: profile.full_name,
+                phone_number: profile.phone_number,
+                avatar_url: profile.avatar_url,
+                role: profile.role,
+              }
+            : null,
         },
       };
     } catch (error: any) {
       throw new UnauthorizedException('Invalid or expired token');
     }
-  } /**
+  }
+
+  /**
    * Confirm email with OTP token
    */
   async confirmEmail(dto: ConfirmEmailDto) {
@@ -305,6 +376,11 @@ export class AuthService {
         newPassword: dto.newPassword,
       });
 
+      console.log(
+        'Password updated successfully for token user',
+        dto.accessToken,
+      );
+
       return {
         success: true,
         message: 'Password updated successfully',
@@ -330,6 +406,56 @@ export class AuthService {
     } catch (error: any) {
       throw new BadRequestException(
         error.message || 'Failed to resend confirmation email',
+      );
+    }
+  }
+
+  /**
+   * Update user email
+   */
+  async updateEmail(email: string) {
+    try {
+      const result = await this.authRepository.updateEmail(email);
+
+      return {
+        success: true,
+        message:
+          'Email update initiated. Please check your new email to confirm the change.',
+        data: {
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+            newEmail: result.user.new_email,
+          },
+        },
+      };
+    } catch (error: any) {
+      throw new BadRequestException(error.message || 'Failed to update email');
+    }
+  }
+
+  /**
+   * Update user phone number
+   */
+  async updatePhoneNumber(phone: string) {
+    try {
+      const result = await this.authRepository.updatePhoneNumber(phone);
+
+      return {
+        success: true,
+        message:
+          'Phone number update initiated. Please verify your new phone number.',
+        data: {
+          user: {
+            id: result.user.id,
+            phone: result.user.phone,
+            newPhone: result.user.new_phone,
+          },
+        },
+      };
+    } catch (error: any) {
+      throw new BadRequestException(
+        error.message || 'Failed to update phone number',
       );
     }
   }
