@@ -413,6 +413,8 @@ export type Database = {
           id: string;
           checkout_url: string | null;
           currency: string | null;
+          discount_amount: number | null;
+          discount_rate: number | null;
           metadata: Json | null;
           order_id: string;
           payment_method: string | null;
@@ -426,11 +428,13 @@ export type Database = {
           id?: string;
           checkout_url?: string | null;
           currency?: string | null;
+          discount_amount?: number | null;
+          discount_rate?: number | null;
           metadata?: Json | null;
           order_id: string;
           payment_method?: string | null;
           stripe_session_id?: string | null;
-          status?: Database['public']['Enums']['payment_status'] | null;
+          status?: Database['public']['Enums']['payment_status'];
           updated_at?: string;
         };
         Update: {
@@ -439,11 +443,13 @@ export type Database = {
           id?: string;
           checkout_url?: string | null;
           currency?: string | null;
+          discount_amount?: number | null;
+          discount_rate?: number | null;
           metadata?: Json | null;
           order_id?: string;
           payment_method?: string | null;
           stripe_session_id?: string | null;
-          status?: Database['public']['Enums']['payment_status'] | null;
+          status?: Database['public']['Enums']['payment_status'];
           updated_at?: string;
         };
         Relationships: [
@@ -586,7 +592,7 @@ export type Database = {
         | 'served';
       order_status: 'active' | 'payment_pending' | 'completed' | 'cancelled';
       payment_method: 'cash' | 'stripe';
-      payment_status: 'pending' | 'success' | 'failed';
+      payment_status: 'created' | 'accepted' | 'pending' | 'success' | 'failed';
       table_status: 'available' | 'occupied' | 'inactive';
       user_role:
         | 'super_admin'
@@ -735,7 +741,7 @@ export const Constants = {
       ],
       order_status: ['active', 'payment_pending', 'completed', 'cancelled'],
       payment_method: ['cash', 'stripe'],
-      payment_status: ['pending', 'success', 'failed'],
+      payment_status: ['created', 'accepted', 'pending', 'success', 'failed'],
       table_status: ['available', 'occupied', 'inactive'],
       user_role: [
         'super_admin',
