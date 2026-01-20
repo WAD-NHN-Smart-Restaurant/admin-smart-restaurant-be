@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   UseGuards,
   Headers,
@@ -35,6 +36,10 @@ import type {
 import { SupabaseJwtAuthGuard } from './guards/supabase-jwt-auth.guard';
 import { AdminGuard } from './guards/admin.guard';
 import { GetRestaurantId } from './decorators/get-restaurant-id.decorator';
+import { UpdateEmailDto } from './dto/update-email.dto';
+import { UpdatePhoneDto } from './dto/update-phone.dto';
+import { createClient } from '@supabase/supabase-js';
+import { UpdatePasswordDto_1 } from './dto/update-password';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -334,24 +339,34 @@ export class AuthController {
   @ApiOperation({ summary: 'Update password' })
   @ApiResponse({ status: 200, description: 'Password updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        newPassword: { type: 'string', example: 'newPassword123' },
-      },
-      required: ['newPassword'],
-    },
-  })
+  @ApiBody({ type: UpdatePasswordDto_1 })
   async updatePassword(
-    @Body() dto: Omit<UpdatePasswordDto, 'accessToken'>,
+    @Body() dto: Omit<UpdatePasswordDto_1, 'accessToken'>,
     @Headers('authorization') authHeader: string,
   ) {
     const token = authHeader?.replace('Bearer ', '');
+
     if (!token) {
       throw new UnauthorizedException('No token provided');
     }
-    return this.authService.updatePassword({ ...dto, accessToken: token });
+
+    if (
+      process.env.SUPABASE_URL === undefined ||
+      process.env.SUPABASE_PUBLISHABLE_KEY === undefined
+    ) {
+      throw new Error('Supabase environment variables are not set');
+    }
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_PUBLISHABLE_KEY,
+    );
+    //return this.authService.updatePassword({ ...dto, accessToken: token });
+    const { data, error } = await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: dto.refreshToken,
+    });
+
+    return supabase.auth.updateUser({ password: dto.newPassword });
   }
 
   /**
@@ -372,6 +387,52 @@ export class AuthController {
   })
   async resendConfirmation(@Body('email') email: string) {
     return this.authService.resendConfirmation(email);
+  }
+
+  /**
+   * Update user email
+   * PUT /auth/update-email
+   */
+  @Put('update-email')
+  @UseGuards(SupabaseJwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update user email',
+    description:
+      "Updates the authenticated user's email address. A confirmation email will be sent to the new email address.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Email update initiated successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - validation error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: UpdateEmailDto })
+  async updateEmail(@Body() dto: UpdateEmailDto) {
+    return this.authService.updateEmail(dto.email);
+  }
+
+  /**
+   * Update user phone number
+   * PUT /auth/update-phone
+   */
+  @Put('update-phone')
+  @UseGuards(SupabaseJwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update user phone number',
+    description:
+      "Updates the authenticated user's phone number. A verification code will be sent to the new phone number.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Phone number update initiated successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - validation error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBody({ type: UpdatePhoneDto })
+  async updatePhoneNumber(@Body() dto: UpdatePhoneDto) {
+    return this.authService.updatePhoneNumber(dto.phone);
   }
 
   // Protected endpoint - requires valid JWT (using new guard)

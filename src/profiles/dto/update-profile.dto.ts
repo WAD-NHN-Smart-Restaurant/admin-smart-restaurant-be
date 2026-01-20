@@ -2,9 +2,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsOptional,
-  IsPhoneNumber,
   MinLength,
   MaxLength,
+  Matches,
 } from 'class-validator';
 
 export class UpdateProfileDto {
@@ -21,10 +21,13 @@ export class UpdateProfileDto {
   full_name?: string;
 
   @ApiPropertyOptional({
-    description: 'User phone number in international format',
+    description: 'User phone number',
     example: '+1234567890',
   })
   @IsOptional()
   @IsString()
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: 'Phone number must be in E.164 format (e.g., +1234567890)',
+  })
   phone_number?: string;
 }
