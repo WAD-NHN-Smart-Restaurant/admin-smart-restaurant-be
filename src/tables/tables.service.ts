@@ -450,4 +450,44 @@ export class TablesService {
     // For demo, just throw error on verify
     return true;
   }
+
+  /**
+   * Assign a waiter to a table
+   */
+  async assignWaiter(
+    tableId: string,
+    waiterId: string | null,
+  ): Promise<TableRow> {
+    try {
+      return await this.tablesRepository.assignWaiter(tableId, waiterId);
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to assign waiter: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
+   * Bulk assign a waiter to multiple tables
+   */
+  async bulkAssignWaiter(
+    tableIds: string[],
+    waiterId?: string | null,
+  ): Promise<{ count: number; message: string }> {
+    try {
+      const result = await this.tablesRepository.bulkAssignWaiter(
+        tableIds,
+        waiterId,
+      );
+
+      return {
+        count: result.count,
+        message: `Successfully assigned waiter to ${result.count} table(s)`,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to bulk assign waiter: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
 }

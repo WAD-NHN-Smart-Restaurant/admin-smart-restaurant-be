@@ -65,4 +65,17 @@ export class ProfilesRepository {
 
     return data.storage_key;
   }
+
+  async getUsersByRole(restaurantId: string, role: string) {
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .select('id, full_name, phone_number, avatar_url, role')
+      .eq('restaurant_id', restaurantId)
+      .eq('role', role as Database['public']['Enums']['user_role'])
+      .order('full_name', { ascending: true });
+
+    if (error) throw mapSqlError(error);
+
+    return data;
+  }
 }
