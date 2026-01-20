@@ -123,6 +123,21 @@ export class PaymentsController {
   }
 
   /**
+   * Admin/Waiter: Confirm payment (mark as success and complete order)
+   */
+  @Post('admin/:paymentId/confirm')
+  async confirmPaymentByAdmin(@Param('paymentId') paymentId: string) {
+    const result =
+      await this.paymentsService.confirmPaymentByAdmin(paymentId);
+
+    return {
+      status: true,
+      data: result,
+      message: 'Payment confirmed successfully',
+    };
+  }
+
+  /**
    * Stripe webhook handler
    */
   @Post('webhook/stripe')

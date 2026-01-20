@@ -71,7 +71,11 @@ export class OrdersController {
     const { tableId } = req.qrToken!;
 
     const order = await this.ordersService.getActiveOrderForGuest(tableId);
-    return order;
+    return {
+      status: true,
+      data: order,
+      message: 'Order retrieved successfully',
+    };
   }
 
   /**
@@ -90,7 +94,11 @@ export class OrdersController {
 
     const order = await this.ordersService.requestBill(tableId, restaurantId);
 
-    return order;
+    return {
+      status: true,
+      data: order,
+      message: 'Bill request created successfully',
+    };
   }
 
   /**
