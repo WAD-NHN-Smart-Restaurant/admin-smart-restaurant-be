@@ -127,7 +127,6 @@ export type Database = {
           description: string | null;
           id: string;
           is_chef_recommended: boolean | null;
-          is_deleted: boolean | null;
           name: string;
           prep_time_minutes: number | null;
           price: number;
@@ -141,7 +140,6 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
-          is_deleted?: boolean | null;
           name: string;
           prep_time_minutes?: number | null;
           price: number;
@@ -155,7 +153,6 @@ export type Database = {
           description?: string | null;
           id?: string;
           is_chef_recommended?: boolean | null;
-          is_deleted?: boolean | null;
           name?: string;
           prep_time_minutes?: number | null;
           price?: number;
@@ -365,7 +362,7 @@ export type Database = {
           guest_name: string | null;
           id: string;
           special_request: string | null;
-          status: Database['public']['Enums']['order_status'];
+          status: string | null;
           table_id: string | null;
           total_amount: number | null;
           updated_at: string;
@@ -376,7 +373,7 @@ export type Database = {
           guest_name?: string | null;
           id?: string;
           special_request?: string | null;
-          status?: Database['public']['Enums']['order_status'];
+          status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
           updated_at?: string;
@@ -387,7 +384,7 @@ export type Database = {
           guest_name?: string | null;
           id?: string;
           special_request?: string | null;
-          status?: Database['public']['Enums']['order_status'];
+          status?: string | null;
           table_id?: string | null;
           total_amount?: number | null;
           updated_at?: string;
@@ -412,47 +409,47 @@ export type Database = {
       payments: {
         Row: {
           amount: number;
-          created_at: string;
-          id: string;
           checkout_url: string | null;
+          created_at: string;
           currency: string | null;
-          discount_amount: number | null;
-          discount_rate: number | null;
+          discount_amount: number;
+          discount_rate: number;
+          id: string;
           metadata: Json | null;
           order_id: string;
           payment_method: string | null;
+          status: string | null;
           stripe_session_id: string | null;
-          status: Database['public']['Enums']['payment_status'] | null;
           updated_at: string;
         };
         Insert: {
           amount: number;
-          created_at?: string;
-          id?: string;
           checkout_url?: string | null;
+          created_at?: string;
           currency?: string | null;
-          discount_amount?: number | null;
-          discount_rate?: number | null;
+          discount_amount?: number;
+          discount_rate?: number;
+          id?: string;
           metadata?: Json | null;
           order_id: string;
           payment_method?: string | null;
+          status?: string | null;
           stripe_session_id?: string | null;
-          status?: Database['public']['Enums']['payment_status'];
           updated_at?: string;
         };
         Update: {
           amount?: number;
-          created_at?: string;
-          id?: string;
           checkout_url?: string | null;
+          created_at?: string;
           currency?: string | null;
-          discount_amount?: number | null;
-          discount_rate?: number | null;
+          discount_amount?: number;
+          discount_rate?: number;
+          id?: string;
           metadata?: Json | null;
           order_id?: string;
           payment_method?: string | null;
+          status?: string | null;
           stripe_session_id?: string | null;
-          status?: Database['public']['Enums']['payment_status'];
           updated_at?: string;
         };
         Relationships: [
@@ -471,6 +468,7 @@ export type Database = {
           created_at: string;
           full_name: string | null;
           id: string;
+          is_active: boolean;
           phone_number: string | null;
           restaurant_id: string | null;
           role: Database['public']['Enums']['user_role'] | null;
@@ -482,6 +480,7 @@ export type Database = {
           created_at?: string;
           full_name?: string | null;
           id: string;
+          is_active?: boolean;
           phone_number?: string | null;
           restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
@@ -493,13 +492,22 @@ export type Database = {
           created_at?: string;
           full_name?: string | null;
           id?: string;
+          is_active?: boolean;
           phone_number?: string | null;
           restaurant_id?: string | null;
           role?: Database['public']['Enums']['user_role'] | null;
           storage_key?: string | null;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_restaurant_id_fkey';
+            columns: ['restaurant_id'];
+            isOneToOne: false;
+            referencedRelation: 'restaurants';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       restaurants: {
         Row: {
@@ -521,6 +529,61 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      reviews: {
+        Row: {
+          comment: string | null;
+          created_at: string;
+          customer_id: string;
+          id: string;
+          menu_item_id: string;
+          order_id: string;
+          rating: number;
+          updated_at: string;
+        };
+        Insert: {
+          comment?: string | null;
+          created_at?: string;
+          customer_id: string;
+          id?: string;
+          menu_item_id: string;
+          order_id: string;
+          rating: number;
+          updated_at?: string;
+        };
+        Update: {
+          comment?: string | null;
+          created_at?: string;
+          customer_id?: string;
+          id?: string;
+          menu_item_id?: string;
+          order_id?: string;
+          rating?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reviews_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_menu_item_id_fkey';
+            columns: ['menu_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_order_id_fkey';
+            columns: ['order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       tables: {
         Row: {

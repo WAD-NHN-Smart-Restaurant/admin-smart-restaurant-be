@@ -38,6 +38,13 @@ export class ProfileResponseDto {
   restaurant_id: string | null;
 
   @ApiProperty({
+    description: 'Whether the staff account is active (for staff users)',
+    example: true,
+    default: true,
+  })
+  is_active: boolean;
+
+  @ApiProperty({
     description: 'Profile creation timestamp',
     example: '2024-01-01T00:00:00.000Z',
   })

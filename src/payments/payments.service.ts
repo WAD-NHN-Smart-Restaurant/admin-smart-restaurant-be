@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { OrdersRepository } from '../orders/orders.repository';
-import { OrdersGateway } from '../orders/orders.gateway';
+import { OrdersGateway } from '../gateways/orders.gateway';
 import { PaymentsRepository, PaymentRow } from './payments.repository';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';

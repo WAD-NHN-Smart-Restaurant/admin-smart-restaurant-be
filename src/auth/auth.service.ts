@@ -160,11 +160,29 @@ export class AuthService {
 
       // Fetch user profile
       let profile = null;
-      try {
+
+      // Check if user is staff (admin/waiter/kitchen_staff) and verify is_active status
+      const userRole = result.user.user_metadata?.role || 'customer';
+      const staffRoles = ['admin', 'waiter', 'kitchen_staff'];
+
+      if (staffRoles.includes(userRole)) {
         profile = await this.profilesService.getProfile(result.user.id);
-      } catch (error) {
         // Profile might not exist for some users, that's okay
-        console.warn(`Profile not found for user ${result.user.id}`);
+        if (!profile) {
+          throw new UnauthorizedException('Unable to verify account status');
+        }
+
+        // Check if staff account is deactivated
+        if (profile && profile.is_active === false) {
+          // Sign out the user immediately
+          await this.authRepository['supabase'].auth.admin.signOut(
+            result.session.access_token,
+            'global',
+          );
+          throw new UnauthorizedException(
+            'Your account has been deactivated. Please contact your administrator.',
+          );
+        }
       }
 
       return {

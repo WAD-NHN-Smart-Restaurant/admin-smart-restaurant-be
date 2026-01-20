@@ -248,7 +248,7 @@ export class ProfilesController {
   ) {
     return this.profilesService.updatePhoneNumber(id, user.id, phoneNumber);
   }
-  
+
   @Get('restaurant/:restaurantId/role/:role')
   @ApiOperation({
     summary: 'Get users by role',
