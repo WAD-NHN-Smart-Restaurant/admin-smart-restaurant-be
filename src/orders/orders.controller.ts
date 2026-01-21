@@ -72,11 +72,7 @@ export class OrdersController {
     const { tableId } = req.qrToken!;
 
     const order = await this.ordersService.getActiveOrderForGuest(tableId);
-    return {
-      status: true,
-      data: order,
-      message: 'Order retrieved successfully',
-    };
+    return order;
   }
 
   /**
@@ -438,5 +434,23 @@ export class OrdersController {
         total: result.count,
       },
     };
+  }
+
+  /**
+   * Get recommended menu items by category (same category as current item)
+   * GET /menu-items/:id/recommendations
+   */
+  @Get('menu-items/:id/recommendations')
+  async getRecommendedMenuItems(
+    @Param('id') menuItemId: string,
+    @Query('limit') limit: string = '6',
+  ) {
+    const limitNum = parseInt(limit, 10) || 6;
+    const recommendations = await this.ordersService.getRecommendedMenuItems(
+      menuItemId,
+      limitNum,
+    );
+
+    return recommendations;
   }
 }

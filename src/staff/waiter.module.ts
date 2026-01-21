@@ -7,6 +7,7 @@ import { KitchenService } from './kitchen.service';
 import { KitchenRepository } from './kitchen.repository';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { OrdersGateway } from '../gateways/orders.gateway';
+import { TablesRepository } from '../tables/tables.repository';
 
 @Module({
   imports: [SupabaseModule],
@@ -17,6 +18,7 @@ import { OrdersGateway } from '../gateways/orders.gateway';
     KitchenService,
     KitchenRepository,
     OrdersGateway,
+    TablesRepository,
   ],
   exports: [WaiterService, KitchenService],
 })

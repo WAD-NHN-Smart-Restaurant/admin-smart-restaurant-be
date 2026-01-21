@@ -290,7 +290,7 @@ export class WaiterRepository {
 
     // Pagination and ordering
     const { data, error, count } = await query
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) throw mapSqlError(error);

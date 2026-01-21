@@ -75,10 +75,10 @@ export class SupabaseJwtAuthGuard implements CanActivate {
         .eq('id', payload.sub)
         .single();
 
-      console.log('Member data fetched in JWT guard:', {
-        memberData,
-        memberError,
-      });
+      // console.log('Member data fetched in JWT guard:', {
+      //   memberData,
+      //   memberError,
+      // });
 
       if (memberError || !memberData) {
         return true;

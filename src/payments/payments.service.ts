@@ -11,6 +11,7 @@ import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { StripeService } from './stripe/stripe.service';
 import { Database, Json } from '../supabase/supabase.types';
+import { TablesRepository } from '../tables/tables.repository';
 
 // Table/Order type aliases
 type OrderItemOptionRow =
@@ -31,6 +32,7 @@ export class PaymentsService {
     private readonly ordersRepository: OrdersRepository,
     private readonly ordersGateway: OrdersGateway,
     private readonly stripeService: StripeService,
+    private readonly tablesRepository: TablesRepository,
   ) {}
 
   /**
@@ -454,6 +456,18 @@ export class PaymentsService {
 
     // Update order to completed
     await this.ordersRepository.updateOrderStatus(order.id, 'completed');
+
+    // Update table status to available when payment is confirmed
+    if (order.table_id) {
+      try {
+        await this.tablesRepository.updateStatus(order.table_id, 'available');
+        this.logger.log(
+          `Table ${order.table_id} status updated to available after payment confirmation`,
+        );
+      } catch (error) {
+        this.logger.warn('Failed to update table status:', error);
+      }
+    }
 
     // Emit socket event
     const orderWithTable = await this.ordersRepository.getOrderWithTable(

@@ -103,7 +103,7 @@ export class KitchenRepository {
     }
 
     const { data, error } = await query.order('created_at', {
-      ascending: true,
+      ascending: false,
     });
 
     if (error) throw mapSqlError(error);

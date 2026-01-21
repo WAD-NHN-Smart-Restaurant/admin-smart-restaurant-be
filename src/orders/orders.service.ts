@@ -610,9 +610,9 @@ export class OrdersService {
     return {
       data,
       count: count || 0,
-     };
+    };
   }
-  
+
   /**
    * Get revenue report by time range
    */
@@ -623,7 +623,7 @@ export class OrdersService {
     groupBy: 'day' | 'week' | 'month',
   ) {
     const { data: orders, error } = await this.supabase
-    .from('orders')
+      .from('orders')
       .select(
         `
         id,
@@ -851,5 +851,52 @@ export class OrdersService {
       peakHours: peakHoursArray,
       popularItems: popularItemsArray,
     };
+  }
+
+  /**
+   * Get recommended menu items by category (same category as current item)
+   */
+  async getRecommendedMenuItems(menuItemId: string, limit: number = 6) {
+    // First get the menu item to find its category
+    const { data: menuItem, error: menuItemError } = await this.supabase
+      .from('menu_items')
+      .select('id, category_id, restaurant_id')
+      .eq('id', menuItemId)
+      .single();
+
+    if (menuItemError || !menuItem) {
+      throw new NotFoundException('Menu item not found');
+    }
+
+    // Get other menu items in the same category
+    const { data: recommendations, error: recError } = await this.supabase
+      .from('menu_items')
+      .select(
+        `
+        id,
+        name,
+        description,
+        price,
+        status,
+        is_chef_recommended,
+        prep_time_minutes,
+        menu_item_photos:menu_item_photos(
+          id,
+          url,
+          is_primary
+        )
+      `,
+      )
+      .eq('category_id', menuItem.category_id)
+      .eq('restaurant_id', menuItem.restaurant_id)
+      .eq('status', 'available')
+      .neq('id', menuItemId) // Exclude the current item
+      .limit(limit);
+
+    if (recError) {
+      throw new BadRequestException('Failed to fetch recommendations');
+    }
+
+    return recommendations || [];
   }
 }

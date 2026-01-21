@@ -12,6 +12,7 @@ import {
   MarkAsServedDto,
 } from './dto/waiter-action.dto';
 import { OrdersGateway } from '../gateways/orders.gateway';
+import { TablesRepository } from '../tables/tables.repository';
 
 @Injectable()
 export class WaiterService {
@@ -19,6 +20,7 @@ export class WaiterService {
     private waiterRepository: WaiterRepository,
     @Inject(forwardRef(() => OrdersGateway))
     private ordersGateway: OrdersGateway,
+    private tablesRepository: TablesRepository,
   ) {}
 
   /**
@@ -62,10 +64,22 @@ export class WaiterService {
       'accepted',
     );
 
-    // Notify via WebSocket
+    // Update table status to occupied when first order is accepted
     const tableId = updatedItem.order.table_id;
     const restaurantId = updatedItem.menu_item.restaurant_id;
 
+    if (tableId) {
+      try {
+        const table = await this.tablesRepository.findById(tableId);
+        if (table && table.status === 'available') {
+          await this.tablesRepository.updateStatus(tableId, 'occupied');
+        }
+      } catch (error) {
+        console.warn('Failed to update table status:', error);
+      }
+    }
+
+    // Notify via WebSocket
     if (tableId && restaurantId) {
       this.ordersGateway.notifyOrderItemStatus(
         restaurantId,
@@ -158,8 +172,6 @@ export class WaiterService {
         order_item_ids,
         'accepted',
       );
-    // Notify kitchen via WebSocket
-    console.log('updatedItems', updatedItems);
 
     if (updatedItems.length > 0) {
       const order = updatedItems[0];
