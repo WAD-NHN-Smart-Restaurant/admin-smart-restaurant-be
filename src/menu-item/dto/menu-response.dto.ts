@@ -124,6 +124,12 @@ export class MenuItemResponseDto {
 
   @ApiProperty({ type: [ModifierGroupResponseDto] })
   menuItemModifierGroups: ModifierGroupResponseDto[];
+
+  @ApiPropertyOptional()
+  averageRating?: number;
+
+  @ApiPropertyOptional()
+  reviewCount?: number;
 }
 
 export class MenuCategoryResponseDto {
