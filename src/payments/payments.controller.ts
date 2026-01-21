@@ -9,11 +9,13 @@ import {
   Req,
   Logger,
   Headers,
+  Query,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
+import { AcceptPaymentDto } from './dto/accept-payment.dto';
 import { StripeService } from './stripe/stripe.service';
 import type { Request as ExpressRequest } from 'express';
 
@@ -102,17 +104,77 @@ export class PaymentsController {
   }
 
   /**
+   * Admin/Waiter: Get completed payments with metadata (customer payments)
+   */
+  @Get('admin/completed')
+  async getCompletedPayments(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.paymentsService.getCompletedPayments(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 50,
+    );
+
+    return {
+      status: true,
+      data: result,
+    };
+  }
+
+  /**
+   * Admin/Waiter: Get pending payment requests (status='created')
+   */
+  @Get('admin/pending')
+  async getPendingPayments() {
+    const result = await this.paymentsService.getPendingPayments();
+
+    return {
+      status: true,
+      data: result,
+    };
+  }
+
+  /**
+   * Test endpoint to verify DTO validation
+   */
+  @Post('admin/test-dto')
+  async testDto(@Body() body: AcceptPaymentDto) {
+    this.logger.log(`Test DTO received: ${JSON.stringify(body)}`);
+    return {
+      status: true,
+      message: 'DTO test passed',
+      received: body,
+    };
+  }
+
+  /**
    * Admin/Waiter: Accept payment request and apply discount
    */
   @Post('admin/:paymentId/accept')
   async acceptPaymentWithDiscount(
     @Param('paymentId') paymentId: string,
-    @Body() body: { discountRate?: number; discountAmount?: number },
+    @Body() body: any,
   ) {
+    this.logger.debug(`Raw body received: ${JSON.stringify(body)}`);
+    this.logger.debug(`Body type: ${typeof body}, keys: ${Object.keys(body || {})}`);
+    
+    // Handle both camelCase (from frontend) and snake_case (after interceptor)
+    const discountRate = body?.discount_rate ?? body?.discountRate ?? 0;
+    const discountAmount = body?.discount_amount ?? body?.discountAmount ?? 0;
+
+    this.logger.log(
+      `Accept payment - ID: ${paymentId}, discountRate: ${discountRate}, discountAmount: ${discountAmount}`,
+    );
+
+    if (!discountRate && !discountAmount) {
+      this.logger.warn(`No discount values provided for payment ${paymentId}`);
+    }
+
     const result = await this.paymentsService.acceptPaymentWithDiscount(
       paymentId,
-      body.discountRate || 0,
-      body.discountAmount || 0,
+      Number(discountRate) || 0,
+      Number(discountAmount) || 0,
     );
 
     return {
