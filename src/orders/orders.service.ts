@@ -44,6 +44,7 @@ export class OrdersService {
   async createOrAddOrder(
     tableId: string,
     restaurantId: string,
+    customerId: string | null,
     createOrderDto: CreateOrderDto,
     guestName?: string,
     notes?: string,
@@ -81,6 +82,7 @@ export class OrdersService {
       order = await this.ordersRepository.createOrder(
         tableId,
         restaurantId,
+        customerId,
         guestName,
         notes,
       );
@@ -405,7 +407,7 @@ export class OrdersService {
           id,
           quantity,
           unit_price,
-          special_request,
+          notes,
           status,
           created_at,
           menu_items (
@@ -428,23 +430,21 @@ export class OrdersService {
       `,
       )
       .eq('id', orderId)
-      .single();
+      .eq('customer_id', customerId || '')
+      .maybeSingle();
 
-    if (error || !order) {
+    if (error) {
       console.error(
         `[getOrderDetails] Error fetching order ${orderId}:`,
         error,
       );
       throw new NotFoundException('Order not found');
     }
-
-    // If customerId is provided, verify the order belongs to the customer or has no customer
-    if (customerId && order.customer_id && order.customer_id !== customerId) {
-      console.error(
-        `[getOrderDetails] Customer ${customerId} tried to access order ${orderId} owned by customer ${order.customer_id}`,
-      );
-      throw new NotFoundException('Order not found');
-    }
+    // If customerId is provided, verify ownership
+    // if (customerId && order.customer_id !== customerId) {
+    //   console.error(`order customer_id: ${order.customer_id}, requested by customer_id: ${customerId}`);
+    //   throw new NotFoundException('Order not found or does not belong to you');
+    // }
 
     return order;
   }
