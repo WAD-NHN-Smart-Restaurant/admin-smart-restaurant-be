@@ -423,6 +423,53 @@ export class MenuItemRepository {
     return [];
   }
 
+  // Helper method to add review statistics to menu items
+  private async addReviewStatsToMenuItems(items: any[]): Promise<any[]> {
+    if (!items || items.length === 0) return items;
+
+    const menuItemIds = items.map((item) => item.id);
+
+    // Fetch review statistics for all items
+    const { data: reviewStats, error } = await (this.supabase as any)
+      .from('reviews')
+      .select('menu_item_id, rating')
+      .in('menu_item_id', menuItemIds);
+
+    if (error || !reviewStats) {
+      // If error, return items without review stats
+      return items.map((item) => ({
+        ...item,
+        averageRating: null,
+        reviewCount: 0,
+      }));
+    }
+
+    // Calculate statistics for each menu item
+    const statsMap = new Map<
+      string,
+      { sum: number; count: number; average: number }
+    >();
+
+    reviewStats.forEach((review: any) => {
+      const itemId = review.menu_item_id;
+      const existing = statsMap.get(itemId) || { sum: 0, count: 0, average: 0 };
+      existing.sum += review.rating;
+      existing.count += 1;
+      existing.average = existing.sum / existing.count;
+      statsMap.set(itemId, existing);
+    });
+
+    // Attach statistics to items
+    return items.map((item) => {
+      const stats = statsMap.get(item.id);
+      return {
+        ...item,
+        averageRating: stats ? Math.round(stats.average * 10) / 10 : null,
+        reviewCount: stats ? stats.count : 0,
+      };
+    });
+  }
+
   // Guest Menu methods
   async getGuestMenu(restaurantId: string, filter: MenuItemFilter = {}) {
     const {
@@ -494,8 +541,14 @@ export class MenuItemRepository {
       filteredItems,
       restaurantId,
     );
-    const sortedItems = this.sortMenuItems(
+
+    // Add review statistics
+    const itemsWithReviews = await this.addReviewStatsToMenuItems(
       itemsWithPopularity,
+    );
+
+    const sortedItems = this.sortMenuItems(
+      itemsWithReviews,
       sortBy,
       sortOrder,
     );
