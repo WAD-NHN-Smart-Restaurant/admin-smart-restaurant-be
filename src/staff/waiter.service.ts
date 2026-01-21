@@ -177,6 +177,16 @@ export class WaiterService {
       const order = updatedItems[0];
       const restaurantId = order?.menu_item?.restaurant_id;
       const tableId = order?.order?.table_id;
+      if (tableId) {
+        try {
+          const table = await this.tablesRepository.findById(tableId);
+          if (table && table.status === 'available') {
+            await this.tablesRepository.updateStatus(tableId, 'occupied');
+          }
+        } catch (error) {
+          console.warn('Failed to update table status:', error);
+        }
+      }
       if (restaurantId && tableId) {
         this.ordersGateway.notifyKitchen(restaurantId, tableId, updatedItems);
       }

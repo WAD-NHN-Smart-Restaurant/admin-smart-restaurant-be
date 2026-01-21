@@ -27,6 +27,7 @@ import {
   ApiConsumes,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Database } from 'src/supabase/supabase.types';
 
 @ApiTags('Profiles')
 @ApiBearerAuth('JWT-auth')
@@ -59,8 +60,33 @@ export class ProfilesController {
     status: 404,
     description: 'Profile not found',
   })
-  async getProfile(@Param('id') id: string) {
-    return this.profilesService.getProfile(id);
+  async getProfile(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    // Try to get existing profile first
+    try {
+      return await this.profilesService.getProfile(id);
+    } catch (error) {
+      // If profile not found, create it with user's auth data
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (errorMessage.includes('not found')) {
+        return await this.profilesService.createProfileIfNotExists({
+          id: id,
+          full_name: user.email?.split('@')[0] || 'User',
+          role: (user.role || 'customer') as
+            | 'customer'
+            | 'admin'
+            | 'waiter'
+            | 'kitchen_staff'
+            | 'super_admin'
+            | 'guest',
+          restaurant_id: user.restaurantId || null,
+          avatar_url: null,
+        });
+      }
+      throw error;
+    }
   }
 
   @Put(':id')

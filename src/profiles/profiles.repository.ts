@@ -78,4 +78,42 @@ export class ProfilesRepository {
 
     return data;
   }
+
+  async createProfile(profileData: {
+    id: string;
+    full_name?: string;
+    role?: Database['public']['Enums']['user_role'];
+    restaurant_id?: string | null;
+    avatar_url?: string | null;
+  }) {
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .insert({
+        id: profileData.id,
+        full_name: profileData.full_name || null,
+        role: profileData.role || 'customer',
+        restaurant_id: profileData.restaurant_id || null,
+        avatar_url: profileData.avatar_url || null,
+      })
+      .select()
+      .single();
+
+    if (error) throw mapSqlError(error);
+
+    return data;
+  }
+
+  async profileExists(userId: string): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      throw mapSqlError(error);
+    }
+
+    return !!data;
+  }
 }

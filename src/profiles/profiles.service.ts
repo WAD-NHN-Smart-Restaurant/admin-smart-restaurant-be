@@ -21,6 +21,38 @@ export class ProfilesService {
     return await this.profilesRepository.findProfileById(userId);
   }
 
+  async createProfileIfNotExists(userData: {
+    id: string;
+    full_name?: string;
+    role?:
+      | 'customer'
+      | 'admin'
+      | 'waiter'
+      | 'kitchen_staff'
+      | 'super_admin'
+      | 'guest';
+    restaurant_id?: string | null;
+    avatar_url?: string | null;
+  }) {
+    try {
+      // Check if profile already exists
+      const exists = await this.profilesRepository.profileExists(userData.id);
+
+      if (exists) {
+        // Return existing profile
+        return await this.profilesRepository.findProfileById(userData.id);
+      }
+
+      // Create new profile
+      return await this.profilesRepository.createProfile(userData);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to create profile: ${errorMessage}`);
+      throw error;
+    }
+  }
+
   async updateProfile(
     userId: string,
     requestUserId: string,

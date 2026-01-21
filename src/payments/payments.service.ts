@@ -557,6 +557,19 @@ export class PaymentsService {
                 order.id,
                 'completed',
               );
+              if (order.table_id) {
+                try {
+                  await this.tablesRepository.updateStatus(
+                    order.table_id,
+                    'available',
+                  );
+                  this.logger.log(
+                    `Table ${order.table_id} status updated to available after payment confirmation`,
+                  );
+                } catch (error) {
+                  this.logger.warn('Failed to update table status:', error);
+                }
+              }
             } else {
               // Fallback: still mark payment as successful with Stripe metadata
               await this.paymentsRepository.updatePayment(payment.id, {
@@ -886,6 +899,7 @@ export class PaymentsService {
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+
     const restaurantId = order.tables.restaurant_id;
     this.ordersGateway.emitOrderStatusUpdate(
       restaurantId,
@@ -893,5 +907,15 @@ export class PaymentsService {
       orderId,
       'completed',
     );
+    if (order.table_id) {
+      try {
+        await this.tablesRepository.updateStatus(order.table_id, 'available');
+        this.logger.log(
+          `Table ${order.table_id} status updated to available after payment confirmation`,
+        );
+      } catch (error) {
+        this.logger.warn('Failed to update table status:', error);
+      }
+    }
   }
 }
