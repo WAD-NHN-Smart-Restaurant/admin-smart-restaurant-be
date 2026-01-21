@@ -69,16 +69,14 @@ export class OrdersController {
       qrToken?: { tableId: string; restaurantId: string };
       user: { id: string };
     },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const { tableId, restaurantId } = req.qrToken!;
-    const customerId = req.user.id;
     const { guestName, notes } = createOrderDto;
-    console.log('Creating order as customer:', customerId);
-
     const order = await this.ordersService.createOrAddOrder(
       tableId,
       restaurantId,
-      customerId,
+      user.id,
       createOrderDto,
       guestName,
       notes,
@@ -138,10 +136,10 @@ export class OrdersController {
   async cancelBill(
     @Request()
     req: ExpressRequest & {
-      user: { tableId: string; restaurantId: string };
+      qrToken?: { tableId: string; restaurantId: string };
     },
   ) {
-    const { tableId, restaurantId } = req.user;
+    const { tableId, restaurantId } = req.qrToken!;
 
     const order = await this.ordersService.cancelBillRequest(
       tableId,

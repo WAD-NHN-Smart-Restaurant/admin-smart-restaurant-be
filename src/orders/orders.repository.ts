@@ -51,6 +51,14 @@ export class OrdersRepository {
     guestName?: string,
     notes?: string,
   ) {
+    console.log(
+      'Creating order for table:',
+      tableId,
+      'restaurant:',
+      restaurantId,
+      'customer:',
+      customerId,
+    );
     const { data, error } = await this.supabase
       .from('orders')
       .insert({
