@@ -36,9 +36,11 @@ export class PaymentsController {
   async initiatePayment(
     @Body() dto: InitiatePaymentDto,
     @Request()
-    req: ExpressRequest & { user: { tableId: string; restaurantId: string } },
+    req: ExpressRequest & {
+      qrToken: { tableId: string; restaurantId: string };
+    },
   ) {
-    const { tableId, restaurantId } = req.user;
+    const { tableId, restaurantId } = req.qrToken;
     const result = await this.paymentsService.initiatePayment(
       tableId,
       restaurantId,
@@ -87,9 +89,9 @@ export class PaymentsController {
   async confirmPayment(
     @Param('paymentId') paymentId: string,
     @Body() body: ConfirmPaymentDto,
-    @Request() req: ExpressRequest & { user: { tableId: string } },
+    @Request() req: ExpressRequest & { qrToken: { tableId: string } },
   ) {
-    const { tableId } = req.user;
+    const { tableId } = req.qrToken;
     const result = await this.paymentsService.confirmPayment(
       paymentId,
       tableId,

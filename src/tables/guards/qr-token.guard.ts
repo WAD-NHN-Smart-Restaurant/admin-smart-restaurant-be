@@ -51,9 +51,6 @@ export class QrTokenGuard implements CanActivate {
         token: token,
       };
 
-      // Also attach to req.user for compatibility with controllers expecting user object
-      request.user = decoded;
-
       return true;
     } catch (error) {
       if (error instanceof BadRequestException) {
