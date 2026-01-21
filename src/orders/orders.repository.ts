@@ -47,6 +47,7 @@ export class OrdersRepository {
   async createOrder(
     tableId: string,
     restaurantId: string,
+    customerId: string | null,
     guestName?: string,
     notes?: string,
   ) {
@@ -56,7 +57,8 @@ export class OrdersRepository {
         table_id: tableId,
         status: 'active',
         guest_name: guestName,
-        special_request: notes,
+        notes: notes,
+        customer_id: customerId,
         total_amount: 0, // Will be calculated based on items
       })
       .select()

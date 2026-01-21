@@ -18,6 +18,8 @@ import { Request as ExpressRequest } from 'express';
 import { QrTokenGuard } from '../tables/guards/qr-token.guard';
 import { SupabaseJwtAuthGuard } from '../auth/guards/supabase-jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import type { AuthenticatedUser } from 'src/auth/decorators/current-user.decorator';
 
 @Controller('orders')
 export class OrdersController {
@@ -45,16 +47,44 @@ export class OrdersController {
     const order = await this.ordersService.createOrAddOrder(
       tableId,
       restaurantId,
+      null, // No customer ID for guest orders
       createOrderDto,
       guestName,
       notes,
     );
 
-    return {
-      status: true,
-      data: order,
-      message: 'Order created/updated successfully',
-    };
+    return order;
+  }
+
+  /**
+   * Customer: Create new order or add items to existing order (authenticated)
+   * POST /customer/orders
+   */
+  @Post('customer')
+  @UseGuards(SupabaseJwtAuthGuard, QrTokenGuard)
+  async createOrAddOrderAsCustomer(
+    @Body() createOrderDto: CreateOrderDto,
+    @Request()
+    req: ExpressRequest & {
+      qrToken?: { tableId: string; restaurantId: string };
+      user: { id: string };
+    },
+  ) {
+    const { tableId, restaurantId } = req.qrToken!;
+    const customerId = req.user.id;
+    const { guestName, notes } = createOrderDto;
+    console.log('Creating order as customer:', customerId);
+
+    const order = await this.ordersService.createOrAddOrder(
+      tableId,
+      restaurantId,
+      customerId,
+      createOrderDto,
+      guestName,
+      notes,
+    );
+
+    return order;
   }
 
   /**
@@ -72,6 +102,7 @@ export class OrdersController {
     const { tableId } = req.qrToken!;
 
     const order = await this.ordersService.getActiveOrderForGuest(tableId);
+
     return order;
   }
 
@@ -141,7 +172,7 @@ export class OrdersController {
     // Emit call waiter notification via WebSocket
     this.ordersGateway.emitCallWaiter(restaurantId, tableId);
 
-    return 'Waiter called successfully';
+    return { message: 'Waiter called successfully' };
   }
 
   /**
@@ -170,12 +201,12 @@ export class OrdersController {
     );
 
     return {
-      status: true,
-      data: result.data,
+      items: result.data,
       pagination: {
         page: pageNum,
         limit: limitNum,
         total: result.count,
+        totalPages: Math.ceil((result.count || 0) / limitNum),
       },
     };
   }
@@ -315,12 +346,12 @@ export class OrdersController {
     );
 
     return {
-      status: true,
-      data: result.data,
+      items: result.data,
       pagination: {
         page: pageNum,
         limit: limitNum,
-        total: result.count,
+        total: result.count || 0,
+        totalPages: Math.ceil((result.count || 0) / limitNum),
       },
     };
   }
@@ -346,11 +377,7 @@ export class OrdersController {
       comment,
     );
 
-    return {
-      status: true,
-      data: review,
-      message: 'Review created successfully',
-    };
+    return review;
   }
 
   /**
@@ -376,12 +403,12 @@ export class OrdersController {
     );
 
     return {
-      status: true,
-      data: result.data,
+      items: result.data,
       pagination: {
         page: pageNum,
         limit: limitNum,
-        total: result.count,
+        total: result.count || 0,
+        totalPages: Math.ceil((result.count || 0) / limitNum),
       },
     };
   }
@@ -399,10 +426,7 @@ export class OrdersController {
     const customerId = req.user.id;
     const order = await this.ordersService.getOrderDetails(orderId, customerId);
 
-    return {
-      status: true,
-      data: order,
-    };
+    return order;
   }
 
   /**
@@ -426,12 +450,12 @@ export class OrdersController {
     );
 
     return {
-      status: true,
-      data: result.data,
+      items: result.data,
       pagination: {
         page: pageNum,
         limit: limitNum,
-        total: result.count,
+        total: result.count || 0,
+        totalPages: Math.ceil((result.count || 0) / limitNum),
       },
     };
   }
