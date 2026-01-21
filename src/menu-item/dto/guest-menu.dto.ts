@@ -9,6 +9,7 @@ import {
   MinLength,
   IsEnum,
 } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GuestMenuQueryDto {
@@ -31,6 +32,12 @@ export class GuestMenuQueryDto {
   @ApiPropertyOptional({
     description: 'Filter by chef recommended items only',
     example: true,
+  })
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return value.toLowerCase() === 'true';
+    return Boolean(value);
   })
   @IsBoolean()
   @IsOptional()
@@ -60,6 +67,7 @@ export class GuestMenuQueryDto {
     minimum: 1,
     default: 1,
   })
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @IsOptional()
@@ -72,6 +80,7 @@ export class GuestMenuQueryDto {
     maximum: 100,
     default: 20,
   })
+  @Type(() => Number)
   @IsNumber()
   @Min(1)
   @Max(100)
@@ -99,6 +108,7 @@ export class GuestMenuQueryDto {
     description: 'Table number (optional, extracted from QR token)',
     example: 5,
   })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   tableNumber?: number;
