@@ -39,9 +39,13 @@ export class PaymentsService {
    * Create initial payment record when customer requests bill
    * This creates a payment with only order_id, status is 'created' (waiting for waiter to accept and apply discount)
    */
-  async createInitialPaymentRecord(orderId: string): Promise<PaymentRow> {
+  async createInitialPaymentRecord(
+    orderId: string,
+    totalAmount: number,
+  ): Promise<PaymentRow> {
     const payment = await this.paymentsRepository.createPayment({
       orderId,
+      amount: totalAmount,
       status: 'created',
     });
 
@@ -719,7 +723,11 @@ export class PaymentsService {
   async getCompletedPayments(page: number = 1, limit: number = 50) {
     const offset = (page - 1) * limit;
     // First fetch payments only
-    const { data: payments, error, count } = await this.paymentsRepository
+    const {
+      data: payments,
+      error,
+      count,
+    } = await this.paymentsRepository
       .getClient()
       .from('payments')
       .select('*', { count: 'exact' })
@@ -729,7 +737,10 @@ export class PaymentsService {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      this.logger.error('Failed to fetch completed payments', error?.message || error);
+      this.logger.error(
+        'Failed to fetch completed payments',
+        error?.message || error,
+      );
       throw new BadRequestException('Failed to fetch payments');
     }
 
@@ -804,7 +815,8 @@ export class PaymentsService {
     const { data: payments, error } = await this.paymentsRepository
       .getClient()
       .from('payments')
-      .select(`
+      .select(
+        `
         *,
         orders!inner(
           id,
@@ -823,7 +835,8 @@ export class PaymentsService {
             table_number
           )
         )
-      `)
+      `,
+      )
       .eq('status', 'created')
       .order('created_at', { ascending: false });
 
@@ -835,7 +848,7 @@ export class PaymentsService {
     return (payments || []).map((payment: any) => {
       const order = payment.orders;
       const table = order?.tables;
-      
+
       // Calculate order total
       const orderItems = order?.order_items || [];
       const totalAmount = orderItems.reduce((sum: number, item: any) => {

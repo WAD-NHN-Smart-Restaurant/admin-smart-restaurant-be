@@ -65,8 +65,10 @@ export class OrdersService {
     const menuItemMap = new Map(menuItems.map((item) => [item.id, item]));
 
     // Check for existing active order
-    const existingOrder =
-      await this.ordersRepository.getActiveOrderByTable(tableId);
+    const existingOrder = await this.ordersRepository.getActiveOrderByTable(
+      tableId,
+      true,
+    );
 
     let order;
     if (existingOrder) {
@@ -199,7 +201,10 @@ export class OrdersService {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const payment: PaymentRow =
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await this.paymentsService.createInitialPaymentRecord(order.id);
+      await this.paymentsService.createInitialPaymentRecord(
+        order.id,
+        order.total_amount || 0,
+      );
 
     const updatedOrder = await this.ordersRepository.updateOrderStatus(
       order.id,

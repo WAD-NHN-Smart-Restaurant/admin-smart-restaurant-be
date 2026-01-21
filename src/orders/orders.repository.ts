@@ -71,7 +71,10 @@ export class OrdersRepository {
   /**
    * Get active order for a table (pending, confirmed, or payment_pending)
    */
-  async getActiveOrderByTable(tableId: string) {
+  async getActiveOrderByTable(
+    tableId: string,
+    forCreateOrder: boolean = false,
+  ) {
     const { data, error } = await this.supabase
       .from('orders')
       .select(
@@ -90,7 +93,7 @@ export class OrdersRepository {
       `,
       )
       .eq('table_id', tableId)
-      .in('status', ['active', 'payment_pending'])
+      .in('status', ['active', ...(!forCreateOrder ? ['payment_pending'] : [])])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();

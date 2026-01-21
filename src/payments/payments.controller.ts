@@ -157,8 +157,9 @@ export class PaymentsController {
     @Body() body: any,
   ) {
     this.logger.debug(`Raw body received: ${JSON.stringify(body)}`);
-    this.logger.debug(`Body type: ${typeof body}, keys: ${Object.keys(body || {})}`);
-    
+    this.logger.debug(
+      `Body type: ${typeof body}, keys: ${Object.keys(body || {})}`,
+    );
     // Handle both camelCase (from frontend) and snake_case (after interceptor)
     const discountRate = body?.discount_rate ?? body?.discountRate ?? 0;
     const discountAmount = body?.discount_amount ?? body?.discountAmount ?? 0;
@@ -189,8 +190,7 @@ export class PaymentsController {
    */
   @Post('admin/:paymentId/confirm')
   async confirmPaymentByAdmin(@Param('paymentId') paymentId: string) {
-    const result =
-      await this.paymentsService.confirmPaymentByAdmin(paymentId);
+    const result = await this.paymentsService.confirmPaymentByAdmin(paymentId);
 
     return {
       status: true,
