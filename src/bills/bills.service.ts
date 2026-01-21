@@ -316,12 +316,10 @@ export class BillsService {
     // Calculate subtotal and tax from payment amount
     // total = subtotal + tax, and total = subtotal * 1.1
     // So subtotal = total / 1.1
+    const subtotal = order.total_amount || 0;
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const tax = discountedSubtotal * this.TAX_RATE;
     const total = payment.amount;
-    const subtotal =
-      discountAmount > 0
-        ? originPrice / (1 + this.TAX_RATE)
-        : total / (1 + this.TAX_RATE);
-    const tax = total - subtotal;
 
     return {
       bill: {

@@ -68,7 +68,9 @@ export class PaymentsRepository {
   async updatePayment(id: string, updates: UpdatePaymentParams) {
     // Filter out null values to avoid TypeScript issues with Supabase types
     const filteredUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([, value]) => value !== null),
+      Object.entries(updates).filter(
+        ([, value]) => value !== null && value !== undefined,
+      ),
     );
 
     const { data, error } = await this.supabase
@@ -118,5 +120,10 @@ export class PaymentsRepository {
 
     if (error) throw mapSqlError(error);
     return data;
+  }
+
+  // Expose Supabase client for advanced queries in service layer
+  getClient() {
+    return this.supabase;
   }
 }

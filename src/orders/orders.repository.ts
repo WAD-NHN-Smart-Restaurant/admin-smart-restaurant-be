@@ -191,7 +191,7 @@ export class OrdersRepository {
       .select(
         `
         *,
-        tables!inner(restaurant_id),
+        tables!inner(restaurant_id, table_number),
         order_items (
           *,
           order_item_options (*)

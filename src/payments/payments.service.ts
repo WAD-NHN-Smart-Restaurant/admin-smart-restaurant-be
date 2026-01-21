@@ -88,9 +88,8 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    if (payment.status !== 'created') {
-      throw new BadRequestException('Payment is not in created status');
-    }
+    // Proceed regardless of current status (created/pending/accepted),
+    // we normalize to 'accepted' and update discount values.
 
     // Always get order to calculate from order total
     const order = await this.ordersRepository.getOrderById(payment.order_id);
@@ -99,14 +98,23 @@ export class PaymentsService {
     }
 
     // Calculate order total (subtotal of all items + options)
-    const orderTotal = this.calculateOrderTotal(order as OrderRow);
+    // Prefer stored total_amount if available; fallback to calculation
+    let orderTotal = (order as any).total_amount as number | null;
+    if (!orderTotal || orderTotal <= 0) {
+      try {
+        orderTotal = this.calculateOrderTotal(order as OrderRow);
+      } catch {
+        // If calculation fails due to missing items, keep as 0 and rely on provided discountAmount
+        orderTotal = 0;
+      }
+    }
 
     // Calculate discount_amount based on discountRate
     // If discountAmount is provided, use it; otherwise calculate from rate
     let effectiveDiscountAmount = discountAmount;
     if (!effectiveDiscountAmount || effectiveDiscountAmount === 0) {
       effectiveDiscountAmount =
-        Math.round(orderTotal * (discountRate / 100) * 100) / 100;
+        Math.round((orderTotal || 0) * (discountRate / 100) * 100) / 100;
     }
 
     this.logger.log(
@@ -115,7 +123,7 @@ export class PaymentsService {
       `Discount: ${discountRate}% = $${effectiveDiscountAmount}`,
     );
 
-    // Update payment to accepted with discount values
+    // Update payment to accepted (or keep accepted) with discount values
     const updatedPayment = await this.paymentsRepository.updatePayment(
       paymentId,
       {
@@ -703,6 +711,154 @@ export class PaymentsService {
       () => chars[Math.floor(Math.random() * chars.length)],
     ).join('');
     return `${timestamp.slice(-8)}${randomChars}`;
+  }
+
+  /**
+   * Get completed payments with metadata (for Bills page - customer payments)
+   */
+  async getCompletedPayments(page: number = 1, limit: number = 50) {
+    const offset = (page - 1) * limit;
+    // First fetch payments only
+    const { data: payments, error, count } = await this.paymentsRepository
+      .getClient()
+      .from('payments')
+      .select('*', { count: 'exact' })
+      .not('metadata', 'is', null)
+      .in('status', ['pending', 'success'])
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      this.logger.error('Failed to fetch completed payments', error?.message || error);
+      throw new BadRequestException('Failed to fetch payments');
+    }
+
+    const items = [] as any[];
+
+    for (const payment of payments || []) {
+      try {
+        const order = await this.ordersRepository.getOrderWithTable(
+          payment.order_id,
+        );
+
+        if (!order) continue;
+
+        const table = (order as any)?.tables;
+        const orderItems = (order as any)?.order_items || [];
+
+        const subtotal = orderItems.reduce((sum: number, item: any) => {
+          const optionsTotal = (item.order_item_options || []).reduce(
+            (optSum: number, opt: any) => optSum + (opt.price_at_time || 0),
+            0,
+          );
+          return sum + item.quantity * ((item.unit_price || 0) + optionsTotal);
+        }, 0);
+
+        const discountAmount = payment.discount_amount || 0;
+        const subtotalAfterDiscount = subtotal - discountAmount;
+        const tax = subtotalAfterDiscount * 0.1;
+        const tipAmount = (payment.metadata as any)?.tipAmount || 0;
+        const finalTotal = subtotalAfterDiscount + tax + tipAmount;
+
+        items.push({
+          orderId: order?.id,
+          paymentId: payment.id,
+          tableNumber: table?.table_number || 'N/A',
+          status: order?.status || 'unknown',
+          paymentStatus: payment.status,
+          paymentMethod: payment.payment_method || 'cash',
+          totalAmount: payment.amount || finalTotal,
+          subtotal,
+          discountRate: payment.discount_rate || 0,
+          discountAmount: payment.discount_amount || 0,
+          tax,
+          tip: tipAmount,
+          finalTotal,
+          itemCount: orderItems.length,
+          createdAt: payment.created_at,
+          updatedAt: payment.updated_at,
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Skipping payment ${payment.id} due to order fetch error: ${err}`,
+        );
+        continue;
+      }
+    }
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
+    };
+  }
+
+  /**
+   * Get pending payment requests (status='created') for Create Bill dialog
+   */
+  async getPendingPayments() {
+    const { data: payments, error } = await this.paymentsRepository
+      .getClient()
+      .from('payments')
+      .select(`
+        *,
+        orders!inner(
+          id,
+          table_id,
+          status,
+          total_amount,
+          order_items(
+            id,
+            quantity,
+            unit_price,
+            order_item_options(
+              price_at_time
+            )
+          ),
+          tables(
+            table_number
+          )
+        )
+      `)
+      .eq('status', 'created')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      this.logger.error('Failed to fetch pending payments', error);
+      throw new BadRequestException('Failed to fetch pending payments');
+    }
+
+    return (payments || []).map((payment: any) => {
+      const order = payment.orders;
+      const table = order?.tables;
+      
+      // Calculate order total
+      const orderItems = order?.order_items || [];
+      const totalAmount = orderItems.reduce((sum: number, item: any) => {
+        const optionsTotal = (item.order_item_options || []).reduce(
+          (optSum: number, opt: any) => optSum + (opt.price_at_time || 0),
+          0,
+        );
+        return sum + item.quantity * ((item.unit_price || 0) + optionsTotal);
+      }, 0);
+
+      const tax = totalAmount * 0.1;
+      const finalTotal = totalAmount + tax;
+
+      return {
+        paymentId: payment.id,
+        orderId: order?.id,
+        tableNumber: table?.table_number || 'N/A',
+        totalAmount,
+        tax,
+        discountAmount: 0,
+        finalTotal,
+      };
+    });
   }
 
   /**
