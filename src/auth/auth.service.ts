@@ -9,9 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { UUID } from 'crypto';
 import { Database } from 'src/supabase/supabase.types';
-import { ref } from 'process';
 import { ProfilesService } from '../profiles/profiles.service';
 
 export interface SignUpDto {
@@ -159,7 +157,7 @@ export class AuthService {
       await this.verifySupabaseJWT(result.session.access_token);
 
       // Fetch user profile
-      let profile = null;
+      let profile: any = null;
 
       // Check if user is staff (admin/waiter/kitchen_staff) and verify is_active status
       const userRole = result.user.user_metadata?.role || 'customer';
@@ -275,7 +273,7 @@ export class AuthService {
       const user = await this.authRepository.getUser(accessToken);
 
       // Fetch user profile
-      let profile = null;
+      let profile: any = null;
       try {
         profile = await this.profilesService.getProfile(user.id);
       } catch (error) {
