@@ -127,7 +127,7 @@ export class MenuItemService {
       await this.menuItemRepository.findMenuItemPhotos(menuItemId);
     const hasPrimary = existingPhotos.some((p) => p.is_primary);
 
-    const uploadedPhotos = [];
+    const uploadedPhotos: any[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
